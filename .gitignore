@@ -1,0 +1,10 @@
+node_modules/
+.shots/
+data/
+*.db
+*.db-*
+.env
+.env.*
+.names
+instances/*.names
+.vercel/

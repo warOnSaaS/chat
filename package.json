@@ -1,0 +1,48 @@
+{
+  "name": "@waronsaas/chat",
+  "version": "0.1.0",
+  "description": "wOS Chat: team chat that a small team owns instead of rents. Channels, DMs, threads, and AI agents as members you can @mention. Self-host free, or host with us.",
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/warOnSaaS/chat"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "server.mjs",
+  "exports": {
+    ".": "./server.mjs",
+    "./tools": "./lib/tools.mjs",
+    "./tools.json": "./tools.json",
+    "./wos-app.json": "./wos-app.json"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "CHAT_DEMO=1 node server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "tools:json": "node scripts/tools-json.mjs",
+    "sync-kit": "node scripts/sync-kit.mjs",
+    "shots": "node scripts/shots.mjs",
+    "check:clean": "node scripts/check-clean.mjs",
+    "check": "node scripts/tools-json.mjs --check && node --test test/*.test.mjs && node scripts/check-clean.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@vercel/functions": "^3.9.11",
+    "aws4fetch": "^1.0.20",
+    "better-sqlite3": "^12.11.1",
+    "fflate": "^0.8.3",
+    "markdown-it": "^15.0.2",
+    "nodemailer": "^10.0.16",
+    "pg": "^8.23.1",
+    "web-push": "^3.6.7",
+    "ws": "^8.22.0",
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.25.2"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
+}

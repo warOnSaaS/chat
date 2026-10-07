@@ -1,0 +1,16 @@
+{
+  "id": "chat",
+  "name": "Chat",
+  "version": "0.1.0",
+  "description": "Team chat: channels, direct messages, threads, and AI agents as members.",
+  "requires": { "core": ">=0.4" },
+  "tools": "./tools.json",
+  "tables": "./migrations",
+  "server": "./server.mjs",
+  "screens": "./public/app/chat.mjs",
+  "needs": { "services": [], "permissions": ["notifications"], "desktop": [] },
+  "data": { "onDisable": "keep", "exports": ["channels", "messages", "files"], "exportFormat": "slack-compatible zip (chat.export)" },
+  "events": ["message.posted", "message.edited", "message.deleted", "thread.updated", "reaction.changed", "read.changed", "channel.created", "channel.updated", "member.joined", "member.left", "person.added", "person.updated", "person.removed", "approval.requested", "typing", "agent.thinking", "notify"],
+  "routes": { "tools": "/api/tools/<name>", "mcp": "/mcp", "live": "/ws", "files": "/files", "health": "/health" },
+  "license": "AGPL-3.0-only"
+}
