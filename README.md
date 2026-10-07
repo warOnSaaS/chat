@@ -73,28 +73,42 @@ Without Docker you need Node 20 or newer: run `npm ci && npm start` for SQLite i
 Every action is a tool, served two ways from the same handlers:
 
 - **MCP** at `/mcp` (Streamable HTTP, with OAuth sign-in: discovery, dynamic client registration, PKCE). Add `https://your-host/mcp` as a connector in Claude, ChatGPT, Claude Code or Codex. Clients that reject dots in tool names can use `/mcp?names=underscore` (`chat_post` instead of `chat.post_message`).
-- **REST** at `POST /api/tools/<name>` with a JSON body. The screens use exactly this.
+- **REST** at `POST /api/tools/<name>` with a JSON body. The screens use exactly this, through `ctx.callTool`.
 
 The full catalogue, with input and output schemas, is [`tools.json`](tools.json) (regenerate with `npm run tools:json`). Each tool has a scope (read, write, delete, admin) and a confirm value. A connection can be limited to some scopes (`scope=read write` when it signs in). Tools marked `confirm: human` (removing someone, importing) ask the person first when an app calls them: the request waits in Activity until the person says yes.
 
 | Tool | Scope | |
 |---|---|---|
 | `chat.list_channels`, `chat.get_channel`, `chat.read_messages`, `chat.search_messages`, `chat.list_mentions`, `chat.list_people`, `chat.list_events`, `chat.get_settings`, `chat.list_approvals` | read | Reading |
-| `chat.post_message`, `chat.post_reply`, `chat.edit_message`, `chat.react`, `chat.upload_file`, `chat.set_typing` | write | Messages |
+| `chat.post_message`, `chat.post_reply`, `chat.edit_message`, `chat.add_reaction`, `chat.remove_reaction`, `chat.upload_file`, `chat.set_typing` | write | Messages |
 | `chat.delete_message` | delete | Messages |
 | `chat.create_channel`, `chat.open_dm`, `chat.invite_people`, `chat.join_channel`, `chat.leave_channel`, `chat.set_topic`, `chat.set_status` | write | Channels and people |
 | `chat.mark_read`, `chat.mark_unread`, `chat.set_notify`, `chat.set_preferences`, `chat.subscribe_push`, `chat.unsubscribe_push`, `chat.decide_approval` | write | Reading state, notifications, approvals |
 | `chat.archive_channel`, `chat.add_person`, `chat.add_agent`, `chat.export_data` | admin | Team |
 | `chat.remove_person`, `chat.import_slack` | admin, confirm: human | Team |
 
-`wos-app.json` is the app manifest (ROADMAP 2.5): tools, tables (`migrations/`), server, screens, needs and data.
+REST answers as the suite does: `200 { result }`, `202 { pending: { approval_id, message } }` when an app calls a `confirm: human` tool, and `{ error: { code, message } }` otherwise. Events are named `chat.noun.past_verb` (`chat.message.posted`); the full list is in `wos-app.json`.
+
+## Inside the wOS suite
+
+Chat follows the suite's app contract ([warOnSaaS/suite CONTRACTS](https://github.com/warOnSaaS/suite)), so the suite can load this folder as it is:
+
+| Part | File |
+|---|---|
+| Manifest | `wos-app.json` |
+| Tool catalogue | `tools.json` (generated: `npm run tools:json`) |
+| Tables | `migrations/0001_init.postgres.sql` and `0001_init.sqlite.sql`, every table `chat_*` with `team_id` |
+| Server part | `server.mjs` default-exports `register(ctx)` (code in `lib/suite.mjs`): one handler per tool, file routes under `/files/chat/`, `exportTeam` |
+| Screen part | `screens.mjs` exports `{ mount(el, ctx) }` (built from `public/app/chat.mjs` and `chat.css`: `npm run build:screens`) |
+
+`node scripts/suite-check.mjs` (Node 22.6 or newer, with the suite checked out next to this repo) loads Chat into a real suite core, turns it on, posts, replies, mentions, reads a private channel as someone else, adds an agent, exports, and turns it off again.
 
 ## Parity with agents
 
 The founder's rule: everything a person can do, an agent can do. It is enforced by tests, so the build fails if it slips:
 
 - **Screen-to-tool** (`test/parity.test.mjs`, Playwright): opens every screen, menu and dialog at 1440 and 390 wide and checks that every button, menu item, form and file picker names a tool from the catalogue, or only opens, closes, copies or fills something on the page. It writes a parity report to `.shots/parity-report.json`.
-- **No side doors**: screen code only calls `/api/tools/*`, `/files` (upload and download streams) and `/ws` (live events).
+- **No side doors**: screen code only calls `/api/tools/*`, `/files/chat/` (upload and download streams) and `/ws` (live events). Buttons that only open, close, copy or fill something carry `data-tool="none"` and a reason in `data-why`.
 - **Catalogue and agent run** (`test/tools.test.mjs`): every tool is fully described, `tools.json` matches the code, and an agent runs every tool end to end over MCP alone.
 
 ## Development
@@ -112,7 +126,8 @@ npm run check                # tools.json current, tests, no private names
 
 | Path | What |
 |---|---|
-| `server.mjs` | Routes, MCP, files, sign-in, WebSockets. Also the Vercel function (`api/index.mjs`) |
+| `server.mjs` | Routes, MCP, files, sign-in, WebSockets. Also the Vercel function (`api/index.mjs`), and `register(ctx)` for the suite |
+| `lib/suite.mjs` | The suite's server part: its ctx and calls translated into the chat code |
 | `lib/chat.mjs` | Channels, messages, threads, reactions, unread, search, notification rules |
 | `lib/tools.mjs` | The tool catalogue and the one way tools run |
 | `lib/bus.mjs` | Live events: stored for catch-up, sent to sockets, shared through `LISTEN/NOTIFY` |
@@ -120,7 +135,7 @@ npm run check                # tools.json current, tests, no private names
 | `lib/push.mjs` | Web Push with self-made VAPID keys, and who gets notified |
 | `lib/export.mjs` | Slack-shaped export, and the Slack import interface and preview |
 | `lib/db.mjs`, `migrations/` | Postgres and SQLite, migrations on start |
-| `public/app/` | The screens: `chat.mjs` and `chat.css` (pieces the kit lacks, in kit tokens) |
+| `public/app/` | The screens: `chat.mjs` (`mount(el, ctx)`), `page.mjs` (the standalone page: its ctx, WebSocket and polling), `chat.css` (pieces the kit lacks, in kit tokens) |
 | `public/ui/` | The ui-design kit, synced, never edited |
 
 ### Kit gaps
