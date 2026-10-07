@@ -16,6 +16,8 @@ import { seedDemo } from './lib/demo.mjs';
 import { createMailer } from './lib/mail.mjs';
 import { appShell, esc } from './lib/html.mjs';
 import { ChatError } from './lib/chat.mjs';
+import { uploadStream, downloadStream } from './lib/filestreams.mjs';
+import { register } from './lib/suite.mjs';
 import {
   identify, sign, verify, cookieOf, setCookie, DEMO_COOKIE, challenge, json, page, bodyObject, loginPage, githubRedirect,
   handleGithubCallback, handleEmailStart, handleEmailVerify, handleAuthorize, handleToken, handleRegister, resourceMetadata, serverMetadata, COOKIE,
@@ -190,30 +192,13 @@ async function handleUpload(app, req, res, url) {
   const who = await identify(app, req);
   if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } });
   if (!who.scopes.includes('write')) return json(res, 403, { error: { code: 'scope', message: 'This connection may not write.' } });
-  const chunks = [];
-  let size = 0;
-  for await (const c of req) {
-    size += c.length;
-    if (size > app.files.maxBytes) return json(res, 413, { error: { code: 'too_large', message: `Files are at most ${Math.round(app.files.maxBytes / 1048576)} MB here.` } });
-    chunks.push(c);
-  }
-  const file = await app.files.put(who.me, { name: url.searchParams.get('name') ?? 'file', type: req.headers['content-type'], data: Buffer.concat(chunks) });
-  json(res, 200, { result: file });
+  return uploadStream(app, who.me, req, res, url);
 }
 
 async function handleDownload(app, req, res, p) {
   const who = await identify(app, req);
   if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } });
-  const id = p.split('/')[3];
-  const f = await app.files.readable(who.me, id);
-  if (!f) return json(res, 404, { error: { code: 'not_found', message: 'No such file.' } });
-  const data = await app.files.read(f);
-  const inline = /^(image\/(png|jpeg|gif|webp)|application\/pdf|text\/plain)$/.test(f.type);
-  res.writeHead(200, {
-    'content-type': f.type, 'content-length': data.length, 'cache-control': 'private, max-age=3600',
-    'content-disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(f.name)}`,
-    'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox",
-  }).end(data);
+  return downloadStream(app, who.me, res, p);
 }
 
 async function demoSwitch(app, req, res, host, handle) {
@@ -248,3 +233,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { esc, page };
+
+// In the suite, this file is the app's server part: register(ctx) returns the tool handlers (lib/suite.mjs).
+export default register;

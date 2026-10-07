@@ -35,7 +35,5 @@ create table if not exists chat_settings (team_id text not null, key text not nu
 create table if not exists chat_approvals (
   id text primary key, team_id text not null, person_id text not null, requested_by text not null, tool text not null, input text not null,
   status text not null default 'waiting', result text, created_at text not null, decided_at text);
+-- Search index. Kept up to date by the app (lib/chat.mjs), not by triggers, so the file is plain statements.
 create virtual table if not exists chat_messages_fts using fts5(body, content='chat_messages', content_rowid='rowid', tokenize='unicode61');
-create trigger if not exists chat_messages_ai after insert on chat_messages begin insert into chat_messages_fts(rowid, body) values (new.rowid, new.body); end;
-create trigger if not exists chat_messages_ad after delete on chat_messages begin insert into chat_messages_fts(chat_messages_fts, rowid, body) values ('delete', old.rowid, old.body); end;
-create trigger if not exists chat_messages_au after update of body on chat_messages begin insert into chat_messages_fts(chat_messages_fts, rowid, body) values ('delete', old.rowid, old.body); insert into chat_messages_fts(rowid, body) values (new.rowid, new.body); end;
