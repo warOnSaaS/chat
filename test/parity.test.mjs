@@ -8,8 +8,8 @@ import { chromium } from 'playwright';
 // Agent parity (ROADMAP 3.2), enforced:
 // 1. Screen-to-tool: open every screen, menu and dialog, at desk and phone width, and collect every button,
 //    menu item, form and file picker. Each must name a tool from the catalogue (data-tool), be the submit
-//    button of a form that does, or be a page helper that only opens, closes, copies or fills something
-//    (data-open, data-close, data-copy, data-insert, data-unpend). Links are navigation.
+//    button or a field of a form that does, or say data-tool="none" with a reason in data-why when it only
+//    opens, closes, copies or fills something on the page (the suite's rule). Links are navigation.
 // 2. No side doors: screen code only talks to /api/tools/*, /files (upload and download streams) and /ws (live events).
 // 3. A parity report: actions per screen, the tools the screens use, and tools with no screen (allowed).
 
@@ -18,7 +18,6 @@ process.env.CHAT_DEMO = '1';
 process.env.SQLITE_FILE = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'chat-parity-')), 'chat.db');
 process.env.FILES_STORAGE = 'db';
 
-const HELPERS = ['data-open', 'data-close', 'data-copy', 'data-insert', 'data-unpend'];
 let server, base, browser, catalogue;
 
 before(async () => {
@@ -33,22 +32,22 @@ before(async () => {
 after(async () => { await browser?.close(); server?.closeAllConnections?.(); server?.close(); });
 
 // Everything on the page right now that does something.
-const collect = (page) => page.evaluate((helpers) => {
+const collect = (page) => page.evaluate(() => {
   const out = [];
   const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length) || el.type === 'file';
   for (const el of document.querySelectorAll('button, [role=menuitem], form, input[type=file], select')) {
     if (!visible(el) && el.tagName !== 'FORM') continue;
     if (el.closest('[data-auth]')) continue;
     const form = el.closest('form');
-    const helper = helpers.find((h) => el.hasAttribute(h));
     let tool = el.getAttribute('data-tool');
-    let how = tool ? 'tool' : helper ? `helper ${helper}` : null;
+    let how = tool ? 'tool' : null;
+    if (tool === 'none') { how = el.getAttribute('data-why') ? `page helper: ${el.getAttribute('data-why')}` : null; tool = null; }
     if (!how && el.tagName === 'BUTTON' && el.type === 'submit' && form?.dataset.tool) { tool = form.dataset.tool; how = 'submit'; }
     if (!how && (el.tagName === 'SELECT' || el.tagName === 'INPUT') && form?.dataset.tool) { tool = form.dataset.tool; how = 'form field'; }
     out.push({ tag: el.tagName.toLowerCase(), text: (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 50), tool, how });
   }
   return out;
-}, HELPERS);
+});
 
 test('every action on every screen has a tool, at desk and phone width', async () => {
   const report = { screens: {}, toolsOnScreens: new Set(), problems: [] };
@@ -148,6 +147,7 @@ test('no side doors: screen code only calls tools, files and the live feed', () 
     for (const m of src.matchAll(/\bfetch\(\s*(`[^`]*`|'[^']*'|"[^"]*")/g)) {
       const target = m[1].slice(1, -1);
       assert.ok(/^\/api\/tools\/|^\/files\/chat(\?|\/|$)/.test(target), `${f}: fetch(${m[1]}) is a side door`);
+      if (f === 'chat.mjs') assert.ok(!/^\/api\/tools\//.test(target), 'the screen part calls tools only through ctx.callTool');
     }
     assert.ok(!/\bfetch\(\s*[a-zA-Z_$]/.test(src), `${f}: fetch with a computed address`);
     assert.ok(!/XMLHttpRequest|sendBeacon|EventSource/.test(src), `${f}: another way to the server`);

@@ -1,6 +1,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { zipSync, strToU8 } from 'fflate';
@@ -44,6 +45,10 @@ test('every tool is fully described, and tools.json is current', () => {
   assert.deepEqual(file.tools.map(({ test, ...x }) => x), JSON.parse(JSON.stringify(tools)), 'tools.json is stale: npm run tools:json');
   const manifest = JSON.parse(fs.readFileSync(new URL('../wos-app.json', import.meta.url)));
   for (const x of tools) for (const e of x.emits) assert.ok(manifest.events.emits.includes(e), `wos-app.json lists event ${e}`);
+  // The suite's screen part is built from the standalone screens and must match them.
+  execFileSync(process.execPath, ['scripts/build-screens.mjs', '--check'], { cwd: new URL('..', import.meta.url).pathname });
+  const screens = fs.readFileSync(new URL('../screens.mjs', import.meta.url), 'utf8');
+  assert.match(screens, /export default \{ title: 'Chat', mount \}/);
 });
 
 test('an agent can do everything over MCP alone: every tool, end to end', async () => {

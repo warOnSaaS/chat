@@ -45,7 +45,7 @@ test('pages need sign-in; the sign-in page offers GitHub and an email link', asy
   const html = await r.text();
   assert.match(html, /Email me a link/);
   const ok = await fetch(`${base}/`, { headers: cookie(t.sam) }).then((x) => x.text());
-  assert.match(ok, /\/app\/chat\.mjs/);
+  assert.match(ok, /\/app\/page\.mjs/);
   assert.equal((await tool('chat.list_channels', {})).status, 401);
 });
 

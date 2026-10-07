@@ -3,19 +3,24 @@
    Written only in the kit's tokens (--ui-*), so any scheme, mode, shape or density restyles them.
    The kit itself (public/ui) is synced by scripts/sync-kit.mjs and never edited. */
 
-body.chat{font-size:14.5px;overflow:hidden}
+body.chat{overflow:hidden}
+.chat-root{font-size:14.5px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .ic{flex:none;display:block}
 .mute{color:var(--ui-ink-3)}
 button{font:inherit;color:inherit}
 
 /* ---- shell: kit sidebar on a desk; on a phone the kit's top bar and dock ---- */
-.chat .ui-shell{height:100svh}
-.chat .ui-side{gap:0;padding-bottom:var(--ui-s2);overflow:hidden}
+.chat-root.ui-shell{height:100svh}
+/* Inside the suite: the app sits in the suite's page instead of owning the window */
+.chat-root.is-embedded{display:flex;height:100%;min-height:0}
+.chat-root.is-embedded .ui-side{position:relative;inset:auto;flex:none;height:100%}
+.chat-root.is-embedded .ui-main{margin-left:0;flex:1;height:100%}
+.chat-root .ui-side{gap:0;padding-bottom:var(--ui-s2);overflow:hidden}
 .side-head{display:flex;align-items:center;gap:8px;padding:2px 6px 12px 10px}
 .side-head .ui-brand{padding:0;flex:1;min-width:0}
 .side-head .ui-brand span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat .mark{width:22px;height:22px;flex:none;border-radius:7px;background:var(--ui-ink);display:grid;place-items:center;color:var(--ui-bg)}
+.chat-root .mark{width:22px;height:22px;flex:none;border-radius:7px;background:var(--ui-ink);display:grid;place-items:center;color:var(--ui-bg)}
 .side-search{display:flex;align-items:center;gap:8px;width:100%;min-height:34px;margin:0 0 10px;padding:0 10px;border:1px solid var(--ui-line-2);border-radius:var(--ui-radius-sm);background:var(--ui-field);color:var(--ui-ink-3);font-size:13.5px;text-decoration:none}
 .side-search:hover{color:var(--ui-ink);border-color:color-mix(in srgb,var(--ui-ink) 28%,transparent)}
 .side-search kbd{margin-left:auto}
@@ -34,18 +39,19 @@ button{font:inherit;color:inherit}
 .chans .ui-badge{margin:0}
 .chans .lock{opacity:.7}
 .side-foot{display:grid;gap:1px;padding-top:8px;border-top:1px solid var(--ui-line);margin-top:8px}
-.chat .ui-side-me{margin-top:6px;padding-top:10px;text-decoration:none;color:var(--ui-ink);border-radius:var(--ui-radius-sm)}
-.chat .ui-side-me:hover{background:var(--ui-hover)}
-.chat .ui-side-me small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.chat .ui-side-me>span:not(.ui-avatar){min-width:0;flex:1}
-.chat .ui-side-me b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.chat-root .ui-side-me{margin-top:6px;padding-top:10px;text-decoration:none;color:var(--ui-ink);border-radius:var(--ui-radius-sm)}
+.chat-root .ui-side-me:hover{background:var(--ui-hover)}
+.chat-root .ui-side-me small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-root .ui-side-me>span:not(.ui-avatar){min-width:0;flex:1}
+.chat-root .ui-side-me b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
 
-.chat .ui-main{height:100svh;display:flex;flex-direction:column;min-width:0}
-.chat .ui-topbar{flex:none}
-.chat .ui-topbar .tb-title{font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
-.chat .ui-topbar .tb-title small{display:block;font-weight:400;font-size:12px;color:var(--ui-ink-3);overflow:hidden;text-overflow:ellipsis}
-.chat .ui-topbar .tb-title small:empty{display:none}
-.chat .ui-topbar>:last-child{margin-left:0}
+.chat-root:not(.is-embedded) .ui-main{height:100svh}
+.chat-root .ui-main{display:flex;flex-direction:column;min-width:0}
+.chat-root .ui-topbar{flex:none}
+.chat-root .ui-topbar .tb-title{font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
+.chat-root .ui-topbar .tb-title small{display:block;font-weight:400;font-size:12px;color:var(--ui-ink-3);overflow:hidden;text-overflow:ellipsis}
+.chat-root .ui-topbar .tb-title small:empty{display:none}
+.chat-root .ui-topbar>:last-child{margin-left:0}
 .view{flex:1;min-height:0;display:flex}
 
 /* ---- a conversation: header, messages, composer; the thread pane beside it ---- */
@@ -182,7 +188,7 @@ button{font:inherit;color:inherit}
 .checks{display:grid;gap:2px;max-height:260px;overflow-y:auto;margin:0 0 var(--ui-s3)}
 .checks label{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:var(--ui-radius-xs);cursor:pointer}
 .checks label:hover{background:var(--ui-hover)}
-.chat .ui-dialog form{margin:0}
+.chat-root .ui-dialog form{margin:0}
 
 /* demo banner and sign-in page */
 .demo-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px clamp(14px,2vw,24px);border-bottom:1px solid var(--ui-line);font-size:12.5px;color:var(--ui-ink-2);background:var(--ui-surface-2)}
@@ -196,12 +202,12 @@ body.gate{display:grid;place-items:center;min-height:100svh;padding:20px}
 .gate-form{margin-top:18px;padding-top:18px;border-top:1px solid var(--ui-line)}
 .gate-note{font-size:13px;padding:10px 12px;border-radius:var(--ui-radius-sm);background:var(--ui-surface-2)}
 
-.chat .ui-toast{max-width:calc(100% - 32px)}
+.chat-root .ui-toast{max-width:calc(100% - 32px)}
 .loading{flex:1;display:grid;place-items:center;color:var(--ui-ink-3)}
 
 @media(max-width:900px){
-  body.chat{font-size:15px}
-  .chat .ui-main{height:100svh}
+  .chat-root{font-size:15px}
+  .chat-root:not(.is-embedded) .ui-main{height:100svh}
   .view{padding-bottom:calc(58px + env(safe-area-inset-bottom))}
   .view.is-convo{padding-bottom:0}
   .is-convo~.ui-dock,.ui-main:has(.is-convo) .ui-dock{display:none}
