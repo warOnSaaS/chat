@@ -54,6 +54,7 @@ const P = {
   compose: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
   smile: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14a4 4 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>',
   reply: '<path d="M20 12.5c0 3.6-3.6 6.5-8 6.5-1 0-2-.1-2.8-.4L4.5 20l1.2-3.4C4.6 15.5 4 14.1 4 12.5 4 8.9 7.6 6 12 6s8 2.9 8 6.5z"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="m16 10.5 5-3v9l-5-3"/>',
   more: '<circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/>',
   clip: '<path d="m20 11.5-7.8 7.8a5 5 0 0 1-7-7l8.1-8.2a3.3 3.3 0 0 1 4.7 4.7l-8 8.1a1.7 1.7 0 0 1-2.4-2.4l7.4-7.4"/>',
   send: '<path d="M4 12 20 4l-6 16-3-7z"/><path d="m11 13 9-9"/>',
@@ -264,6 +265,7 @@ async function showConvo(r) {
     <header class="convo-h">
       <div class="t"><h1>${title}${info.archived ? ' <span class="ui-chip is-outline">Archived</span>' : ''}</h1><p class="topic">${esc(info.topic || (isDm(info) ? dmSubtitle(info) : 'No topic yet'))}</p></div>
       <div class="acts">
+        ${S.meet && !info.archived && info.member ? `<button type="button" class="ui-btn is-ghost is-sm" data-tool="meet.huddle" data-channel="${esc(info.id)}" aria-label="Start a call" title="Start a call">${ic('video')}<span class="hide-sm">Call</span></button>` : ''}
         <button type="button" class="ui-btn is-ghost is-sm hide-sm" data-open="members" data-tool="none" data-why="shows who is in the channel" data-channel="${esc(info.id)}" aria-label="People in this channel"><span class="ui-avatars">${info.members.slice(0, 3).map((m) => avatar(m, 'is-xs')).join('')}</span>${info.members.length}</button>
         <button type="button" class="ui-btn is-ghost is-icon is-sm hide-sm" data-open="notify-menu" data-tool="none" data-why="opens the notification menu" data-channel="${esc(info.id)}" aria-label="Notifications" title="Notifications: ${esc(notifyLabel(info.notify))}">${ic(info.notify === 'none' ? 'bellOff' : 'bell')}</button>
         <button type="button" class="ui-btn is-ghost is-icon is-sm hide-sm" data-open="channel-menu" data-tool="none" data-why="opens the channel menu" data-channel="${esc(info.id)}" aria-label="Channel options">${ic('more')}</button>
@@ -630,6 +632,18 @@ function confirmBox(title, text, yes = 'Delete') {
 // ---------- actions: each one calls the tool it names ----------
 
 const ACT = {
+  // A call for this channel, from the Meetings app (only shown when the suite has Meetings on): open or find the
+  // channel's live room, post its link here, and go to it.
+  async 'meet.huddle'(el) {
+    const info = chan(el.dataset.channel);
+    const name = info?.name ?? 'channel';
+    const r = await CTX.callTool('meet.huddle', { for: `chat:channel:${el.dataset.channel}`, title: isDm(info) ? `Call with ${name}` : `#${name} call` });
+    const link = r?.meeting?.join_url;
+    if (!link) throw new Error('Meetings did not return a link.');
+    await call('chat.post_message', { channel: el.dataset.channel, body: `Started a call: ${link}` });
+    const u = new URL(link, location.href);
+    if (u.origin === location.origin) { history.pushState(null, '', u.pathname); dispatchEvent(new PopStateEvent('popstate')); } else window.open(link, '_blank', 'noopener');
+  },
   async 'chat.add_reaction'(el) {
     const m = findMessage(el.dataset.message);
     const mine = m?.reactions.find((r) => r.emoji === el.dataset.emoji)?.mine;
@@ -1088,6 +1102,8 @@ async function start() {
     S.settings = settings;
     S.cursor = ev.cursor;
     applyTheme(settings.prefs.theme);
+    // Calls come from the Meetings app; inside the suite, a channel offers one only when Meetings is on.
+    S.meet = !CTX.standalone && (await CTX.callTool('meet.whoami', {}).then(() => true, () => false));
     renderShell();
     call('chat.list_approvals').then((r) => { S.approvals = r.approvals; renderSide(); }).catch(() => {});
     await route();
