@@ -147,7 +147,7 @@ test('no side doors: screen code only calls tools, files and the live feed', () 
     const src = fs.readFileSync(new URL(f, dir), 'utf8');
     for (const m of src.matchAll(/\bfetch\(\s*(`[^`]*`|'[^']*'|"[^"]*")/g)) {
       const target = m[1].slice(1, -1);
-      assert.ok(/^\/api\/tools\/|^\/files(\?|\/|$)/.test(target), `${f}: fetch(${m[1]}) is a side door`);
+      assert.ok(/^\/api\/tools\/|^\/files\/chat(\?|\/|$)/.test(target), `${f}: fetch(${m[1]}) is a side door`);
     }
     assert.ok(!/\bfetch\(\s*[a-zA-Z_$]/.test(src), `${f}: fetch with a computed address`);
     assert.ok(!/XMLHttpRequest|sendBeacon|EventSource/.test(src), `${f}: another way to the server`);

@@ -47,7 +47,7 @@ export function createServer(appOrPromise = createApp()) {
     try { app = await ready; } catch { return json(res, 503, { error: 'The chat server could not start. Check DATABASE_URL and the server log.' }); }
     try { await route(app, req, res); } catch (e) {
       if (!(e instanceof ChatError)) console.error(e);
-      if (!res.headersSent) json(res, e.status ?? 500, { ok: false, error: e instanceof ChatError ? e.message : 'Something went wrong on our side. Try again.' });
+      if (!res.headersSent) json(res, e.status ?? 500, { error: e instanceof ChatError ? { code: e.code, message: e.message } : { code: 'server', message: 'Something went wrong on our side. Try again.' } });
     }
   });
   const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
@@ -114,8 +114,9 @@ async function route(app, req, res) {
   if (p === '/logout') return res.writeHead(302, { location: app.demo ? '/' : '/login', 'set-cookie': [setCookie(host, COOKIE, '', 0), setCookie(host, DEMO_COOKIE, '', 0)], 'cache-control': 'no-store' }).end();
   if (p === '/api/tools' && req.method === 'GET') return json(res, 200, { tools: catalogue() });
   if (p.startsWith('/api/tools/')) return handleTool(app, req, res, decodeURIComponent(p.slice('/api/tools/'.length)));
-  if (p === '/files' && req.method === 'POST') return handleUpload(app, req, res, url);
-  if (p.startsWith('/files/')) return handleDownload(app, req, res, p);
+  // File streams live under /files/chat/, as the suite routes them.
+  if (p === '/files/chat' && req.method === 'POST') return handleUpload(app, req, res, url);
+  if (p.startsWith('/files/chat/')) return handleDownload(app, req, res, p);
   if (app.demo && p.startsWith('/demo/as/')) return demoSwitch(app, req, res, host, p.slice('/demo/as/'.length));
   if (req.method !== 'GET') return json(res, 404, { error: 'Not found' });
   // Every other path is the app; the screen reads its place from the #hash.
@@ -141,12 +142,14 @@ export function catalogue() {
 async function handleTool(app, req, res, name) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Use POST' }, { allow: 'POST' });
   const who = await identify(app, req);
-  if (!who) return json(res, 401, { ok: false, error: 'Sign in first.' }, { 'www-authenticate': challenge(hostOf(req)) });
+  if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } }, { 'www-authenticate': challenge(hostOf(req)) });
   // A browser call must come from this site (the cookie is SameSite=Lax; this closes the rest).
-  if (who.via === 'web' && req.headers.origin && req.headers.origin !== hostOf(req)) return json(res, 403, { ok: false, error: 'Wrong origin.' });
+  if (who.via === 'web' && req.headers.origin && req.headers.origin !== hostOf(req)) return json(res, 403, { error: { code: 'forbidden', message: 'Wrong origin.' } });
   const input = await bodyObject(req);
   const result = await runTool(app, who.me, name, input, { via: who.via === 'mcp' ? 'rest' : 'web', scopes: who.scopes, client: who.client });
-  json(res, 200, { ok: true, result });
+  // A confirm: human tool called by an app: 202 and the approval id, as the suite does.
+  if (result?.pending) return json(res, 202, result);
+  json(res, 200, { result });
 }
 
 async function handleMcp(app, req, res, host, url) {
@@ -165,7 +168,8 @@ async function handleMcp(app, req, res, host, url) {
     }, async (args) => {
       try {
         const out = await runTool(app, who.me, t.name, args ?? {}, { via: 'mcp', scopes: who.scopes, client: who.client });
-        return { content: [{ type: 'text', text: toText(t.name, out) }] };
+        // JSON text plus structuredContent, as the suite's MCP gateway returns.
+        return { content: [{ type: 'text', text: JSON.stringify(out) }], structuredContent: out };
       } catch (e) {
         return { isError: true, content: [{ type: 'text', text: e.message }] };
       }
@@ -184,25 +188,25 @@ Never post on someone's behalf without being asked. Never invent messages.`;
 
 async function handleUpload(app, req, res, url) {
   const who = await identify(app, req);
-  if (!who) return json(res, 401, { ok: false, error: 'Sign in first.' });
-  if (!who.scopes.includes('write')) return json(res, 403, { ok: false, error: 'This connection may not write.' });
+  if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } });
+  if (!who.scopes.includes('write')) return json(res, 403, { error: { code: 'scope', message: 'This connection may not write.' } });
   const chunks = [];
   let size = 0;
   for await (const c of req) {
     size += c.length;
-    if (size > app.files.maxBytes) return json(res, 413, { ok: false, error: `Files are at most ${Math.round(app.files.maxBytes / 1048576)} MB here.` });
+    if (size > app.files.maxBytes) return json(res, 413, { error: { code: 'too_large', message: `Files are at most ${Math.round(app.files.maxBytes / 1048576)} MB here.` } });
     chunks.push(c);
   }
   const file = await app.files.put(who.me, { name: url.searchParams.get('name') ?? 'file', type: req.headers['content-type'], data: Buffer.concat(chunks) });
-  json(res, 200, { ok: true, result: file });
+  json(res, 200, { result: file });
 }
 
 async function handleDownload(app, req, res, p) {
   const who = await identify(app, req);
-  if (!who) return json(res, 401, { error: 'Sign in first.' });
-  const id = p.split('/')[2];
+  if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } });
+  const id = p.split('/')[3];
   const f = await app.files.readable(who.me, id);
-  if (!f) return json(res, 404, { error: 'No such file.' });
+  if (!f) return json(res, 404, { error: { code: 'not_found', message: 'No such file.' } });
   const data = await app.files.read(f);
   const inline = /^(image\/(png|jpeg|gif|webp)|application\/pdf|text\/plain)$/.test(f.type);
   res.writeHead(200, {

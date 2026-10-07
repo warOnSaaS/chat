@@ -27,7 +27,7 @@ test('two server copies share live updates through Postgres LISTEN/NOTIFY', { sk
   await new Promise((r) => ws.on('message', (m) => { const e = JSON.parse(m); got.push(e); if (e.type === 'hello') r(); }));
   // Post through copy B, as Sam.
   const r = await fetch(`http://localhost:${sb.address().port}/api/tools/chat.post_message`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: `chat_session=${encodeURIComponent(issueTokens(a.sam).access_token)}` }, body: JSON.stringify({ channel: 'general', body: 'across copies @jordan' }) }).then((x) => x.json());
-  assert.equal(r.ok, true);
+  assert.equal(r.result.body, 'across copies @jordan');
   for (let i = 0; i < 40 && !got.some((e) => e.type === 'chat.message.posted'); i++) await new Promise((res) => setTimeout(res, 50));
   ws.close();
   const ev = got.find((e) => e.type === 'chat.message.posted');

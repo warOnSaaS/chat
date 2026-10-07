@@ -23,14 +23,15 @@ async function call(name, input = {}) {
   let j = {};
   try { j = await r.json(); } catch {}
   if (r.status === 401) { location.href = `/login?next=${encodeURIComponent(location.pathname + location.hash)}`; throw new Error('Signed out'); }
-  if (!j.ok) throw new Error(j.error || 'Something went wrong. Try again.');
+  if (r.status === 202 && j.pending) { toast(j.pending.message); return j; }
+  if (!r.ok || j.error) throw new Error(j.error?.message || 'Something went wrong. Try again.');
   return j.result;
 }
 
 async function upload(file) {
-  const r = await fetch(`/files?name=${encodeURIComponent(file.name)}`, { method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file, credentials: 'same-origin' });
+  const r = await fetch(`/files/chat?name=${encodeURIComponent(file.name)}`, { method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file, credentials: 'same-origin' });
   const j = await r.json().catch(() => ({}));
-  if (!j.ok) throw new Error(j.error || 'Upload failed.');
+  if (!r.ok || j.error) throw new Error(j.error?.message || 'Upload failed.');
   return j.result;
 }
 

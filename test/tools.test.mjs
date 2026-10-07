@@ -94,7 +94,7 @@ test('an agent can do everything over MCP alone: every tool, end to end', async 
   await call('chat.add_person', { name: 'Morgan Pike', email: 'morgan@birch-law.example' });
   await call('chat.add_agent', { name: 'Minutes', description: 'Writes up meetings', channels: [ch] });
   // Removing someone needs a person's yes: the agent's call becomes a request for Sam.
-  assert.match(await call('chat.remove_person', { person: 'morgan' }), /needs a person's yes/);
+  assert.match(JSON.parse(await call('chat.remove_person', { person: 'morgan' })).pending.message, /needs a person's yes/);
   const approvals = JSON.parse(await call('chat.list_approvals'));
   assert.equal(approvals.approvals[0].tool, 'chat.remove_person');
   // Deciding is the person's own click; over MCP it is refused.
@@ -105,10 +105,10 @@ test('an agent can do everything over MCP alone: every tool, end to end', async 
   await call('chat.unsubscribe_push', {});
   const ev = JSON.parse(await call('chat.list_events', {}));
   await call('chat.list_events', { since: Math.max(0, ev.cursor - 5) });
-  assert.match(await call('chat.export_data'), /Export ready: \/files\//);
+  assert.match(JSON.parse(await call('chat.export_data')).file.url, /^\/files\/chat\//);
   const zip = zipSync({ 'users.json': strToU8('[]'), 'channels.json': strToU8('[{"id":"C1","name":"x","members":[]}]') });
   const z = JSON.parse(await call('chat.upload_file', { name: 'slack.zip', content_base64: Buffer.from(zip).toString('base64') }));
-  assert.match(await call('chat.import_slack', { file: z.id }), /needs a person's yes/);
+  assert.ok(JSON.parse(await call('chat.import_slack', { file: z.id })).pending.approval_id);
 
   const missing = listed.filter((n) => !used.has(n));
   assert.deepEqual(missing, [], `tools never run by the agent test: ${missing.join(', ')}`);

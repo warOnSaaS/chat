@@ -300,12 +300,12 @@ test('people: add, remove, status; scopes and human approval', async () => {
   await rejects(run(jordan, 'chat.post_message', { channel: 'general', body: 'x' }, { via: 'mcp', scopes: ['read'] }), /may not write/);
   // An app acting for Sam asks before removing someone; nothing happens until Sam says yes in the app.
   const ask = await run(sam, 'chat.remove_person', { person: 'avery' }, { via: 'mcp', client: 'Claude' });
-  assert.equal(ask.needs_approval, true);
+  assert.match(ask.pending.approval_id, /^ap_/);
   assert.equal((await app.chat.findPerson(app.teamId, 'avery'))?.handle, 'avery');
   const list = await run(sam, 'chat.list_approvals', {});
   assert.equal(list.approvals[0].requested_by, 'Claude');
-  await rejects(run(sam, 'chat.decide_approval', { approval: ask.approval, approve: true }, { via: 'mcp' }), /Only a person/);
-  const done = await run(sam, 'chat.decide_approval', { approval: ask.approval, approve: true });
+  await rejects(run(sam, 'chat.decide_approval', { approval: ask.pending.approval_id, approve: true }, { via: 'mcp' }), /Only a person/);
+  const done = await run(sam, 'chat.decide_approval', { approval: ask.pending.approval_id, approve: true });
   assert.equal(done.status, 'done');
   assert.equal(await app.chat.findPerson(app.teamId, 'avery'), null);
   // Unknown input is refused, not ignored.

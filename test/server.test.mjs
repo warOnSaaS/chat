@@ -51,15 +51,23 @@ test('pages need sign-in; the sign-in page offers GitHub and an email link', asy
 
 test('REST tools: the same handlers as MCP, with a browser origin check', async () => {
   const r = await tool('chat.post_message', { channel: 'general', body: 'from rest' }, cookie(t.sam));
-  assert.equal(r.ok, true);
+  assert.equal(r.status, 200);
   assert.equal(r.result.body, 'from rest');
   const bad = await tool('chat.post_message', { channel: 'general', body: 'x' }, { ...cookie(t.sam), origin: 'https://evil.example' });
   assert.equal(bad.status, 403);
   const err = await tool('chat.read_messages', { channel: 'nope' }, cookie(t.sam));
   assert.equal(err.status, 404);
-  assert.match(err.error, /No channel/);
+  assert.equal(err.error.code, 'not_found');
+  assert.match(err.error.message, /No channel/);
   const none = await tool('chat.fly', {}, cookie(t.sam));
   assert.equal(none.status, 404);
+  assert.equal(none.error.code, 'no_tool');
+  const bad2 = await tool('chat.post_message', { channel: 'general' }, cookie(t.sam));
+  assert.equal(bad2.error.code, 'invalid_input');
+  // An app asking for a confirm: human tool gets 202 and an approval id.
+  const pend = await tool('chat.remove_person', { person: 'riley' }, bearer(t.sam));
+  assert.equal(pend.status, 202);
+  assert.match(pend.pending.approval_id, /^ap_/);
 });
 
 test('MCP: every tool is listed, with dotted names or underscores for strict clients', async () => {
@@ -68,9 +76,10 @@ test('MCP: every tool is listed, with dotted names or underscores for strict cli
   const catalogue = (await fetch(`${base}/tools.json`).then((r) => r.json())).tools.map((x) => x.name);
   assert.deepEqual(names.sort(), catalogue.sort());
   const out = await c.callTool({ name: 'chat.post_message', arguments: { channel: 'general', body: 'from claude' } });
-  assert.match(out.content[0].text, /Posted m_/);
+  assert.equal(out.structuredContent.body, 'from claude');
+  assert.equal(JSON.parse(out.content[0].text).id, out.structuredContent.id);
   const read = await c.callTool({ name: 'chat.read_messages', arguments: { channel: 'general' } });
-  assert.match(read.content[0].text, /from claude \(m_/);
+  assert.ok(read.structuredContent.messages.some((m) => m.body === 'from claude'));
   await c.close();
   const u = await mcp(t.sam, { query: '?names=underscore' });
   assert.ok((await u.listTools()).tools.some((x) => x.name === 'chat_post_message'));
@@ -102,7 +111,8 @@ test('MCP OAuth: register, authorize as the signed-in person, exchange with PKCE
   const r = await tool('chat.list_people', {}, { authorization: `Bearer ${tok.access_token}` });
   assert.equal(r.result.me.handle, 'casey');
   const del = await tool('chat.delete_message', { message: 'm_x' }, { authorization: `Bearer ${tok.access_token}` });
-  assert.match(del.error, /may not delete/);
+  assert.equal(del.status, 403);
+  assert.equal(del.error.code, 'scope');
   const wrong = await fetch(meta.token_endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ grant_type: 'authorization_code', code: to.searchParams.get('code'), client_id: reg.client_id, code_verifier: 'nope' }) });
   assert.equal(wrong.status, 400);
 });
@@ -125,7 +135,7 @@ test('live: a socket hears what it may see, and nothing from channels it is not 
 });
 
 test('files: upload streams to /files, download checks who may read', async () => {
-  const up = await fetch(`${base}/files?name=${encodeURIComponent('hello world.txt')}`, { method: 'POST', headers: { ...cookie(t.sam), 'content-type': 'text/plain' }, body: 'hello' }).then((r) => r.json());
+  const up = await fetch(`${base}/files/chat?name=${encodeURIComponent('hello world.txt')}`, { method: 'POST', headers: { ...cookie(t.sam), 'content-type': 'text/plain' }, body: 'hello' }).then((r) => r.json());
   assert.equal(up.result.name, 'hello world.txt');
   const priv = await t.run(t.sam, 'chat.create_channel', { name: 'files-private', private: true });
   await t.run(t.sam, 'chat.post_message', { channel: priv.id, body: 'file', files: [up.result.id] });
