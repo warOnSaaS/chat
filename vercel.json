@@ -1,0 +1,13 @@
+{
+  "outputDirectory": "public",
+  "functions": {
+    "api/index.mjs": { "includeFiles": "{migrations/**,public/**,package.json,wos-app.json,tools.json}", "maxDuration": 300 }
+  },
+  "rewrites": [
+    { "source": "/((?!ui/|app/|sw\\.js|manifest\\.webmanifest|icon).*)", "destination": "/api/index?__p=/$1" }
+  ],
+  "headers": [
+    { "source": "/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] },
+    { "source": "/sw.js", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+  ]
+}

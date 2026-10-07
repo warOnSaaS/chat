@@ -233,7 +233,7 @@ function serveFile(res, file, type) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const server = createServer();
-  const port = Number(process.env.PORT || 3990);
+  const port = Number(process.env.PORT || 3995);
   server.listen(port, async () => {
     const app = await server.ready;
     console.log(`wOS Chat on http://localhost:${port} (${app.demo ? 'demo, ' : ''}${app.db.kind}, files on ${app.files.mode}). Agents connect to /mcp.`);

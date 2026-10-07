@@ -1,0 +1,8 @@
+node_modules
+.git
+.shots
+data
+.env
+.env.*
+.names
+.vercel
