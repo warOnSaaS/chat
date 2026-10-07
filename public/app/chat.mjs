@@ -112,26 +112,26 @@ function renderShell() {
   const team = S.settings.team;
   ROOT.innerHTML = `
   <aside class="ui-side" aria-label="Channels">
-    <div class="side-head"><a class="ui-brand" href="#/"><span class="mark">${ic('hash', 14)}</span><span>${esc(team.name)}</span></a>
+    <div class="side-head"><a data-tool="none" data-why="moves to another screen" class="ui-brand" href="#/"><span class="mark">${ic('hash', 14)}</span><span>${esc(team.name)}</span></a>
       <button type="button" class="ui-btn is-ghost is-icon is-sm" data-open="new-dm" data-tool="none" data-why="opens the new message form" title="New message" aria-label="New message">${ic('compose')}</button></div>
-    <a class="side-search" href="#/search">${ic('search', 15)}<span>Search</span><kbd class="ui-kbd">/</kbd></a>
+    <a data-tool="none" data-why="moves to another screen" class="side-search" href="#/search">${ic('search', 15)}<span>Search</span><kbd class="ui-kbd">/</kbd></a>
     <nav class="side-scroll" id="side-list" aria-label="Channels and direct messages"></nav>
     <nav class="side-foot ui-side-nav" aria-label="More">
-      <a href="#/activity" data-nav="activity">${ic('at')}<span>Activity</span><em id="act-count"></em></a>
-      <a href="#/browse" data-nav="browse">${ic('hash')}<span>All channels</span></a>
-      <a href="#/settings" data-nav="settings">${ic('gear')}<span>Settings</span></a>
+      <a data-tool="none" data-why="moves to another screen" href="#/activity" data-nav="activity">${ic('at')}<span>Activity</span><em id="act-count"></em></a>
+      <a data-tool="none" data-why="moves to another screen" href="#/browse" data-nav="browse">${ic('hash')}<span>All channels</span></a>
+      <a data-tool="none" data-why="moves to another screen" href="#/settings" data-nav="settings">${ic('gear')}<span>Settings</span></a>
     </nav>
-    <a class="ui-side-me" href="#/settings" id="side-me"></a>
+    <a data-tool="none" data-why="moves to another screen" class="ui-side-me" href="#/settings" id="side-me"></a>
   </aside>
   <div class="ui-main">
     <header class="ui-topbar" id="topbar"></header>
     ${S.settings.team.demo ? demoBar() : ''}
     <div class="view" id="view"><div class="loading">Loading</div></div>
     <nav class="ui-dock" aria-label="Main">
-      <a href="#/home" data-nav="home">${ic('home', 20)}<span>Home</span></a>
-      <a href="#/activity" data-nav="activity">${ic('at', 20)}<span>Activity</span></a>
-      <a href="#/search" data-nav="search">${ic('search', 20)}<span>Search</span></a>
-      <a href="#/settings" data-nav="settings">${ic('gear', 20)}<span>You</span></a>
+      <a data-tool="none" data-why="moves to another screen" href="#/home" data-nav="home">${ic('home', 20)}<span>Home</span></a>
+      <a data-tool="none" data-why="moves to another screen" href="#/activity" data-nav="activity">${ic('at', 20)}<span>Activity</span></a>
+      <a data-tool="none" data-why="moves to another screen" href="#/search" data-nav="search">${ic('search', 20)}<span>Search</span></a>
+      <a data-tool="none" data-why="moves to another screen" href="#/settings" data-nav="settings">${ic('gear', 20)}<span>You</span></a>
     </nav>
   </div>
   <div class="ui-toast" id="toast" role="status" aria-live="polite"></div>`;
@@ -150,7 +150,7 @@ function channelLinks(list) {
     const here = S.route.channel === c.id;
     const lead = isDm(c) ? (c.with?.length === 1 ? avatar(c.with[0]) : `<span class="hash">${ic('people', 14)}</span>`) : `<span class="hash">${c.kind === 'private' ? ic('lock', 13) : '#'}</span>`;
     const badge = c.mentions ? `<span class="ui-badge">${c.mentions}</span>` : '';
-    return `<li><a href="#/c/${esc(c.id)}" class="${c.unread && !here ? 'is-unread' : ''}" ${here ? 'aria-current="page"' : ''}>${lead}<span class="nm">${esc(c.name)}</span>${badge}</a></li>`;
+    return `<li><a data-tool="none" data-why="moves to another screen" href="#/c/${esc(c.id)}" class="${c.unread && !here ? 'is-unread' : ''}" ${here ? 'aria-current="page"' : ''}>${lead}<span class="nm">${esc(c.name)}</span>${badge}</a></li>`;
   }).join('');
 }
 
@@ -177,7 +177,7 @@ function renderSide() {
 }
 
 function topbar({ title = S.settings.team.name, back = null, extra = '' } = {}) {
-  $('#topbar').innerHTML = `${back ? `<a class="ui-btn is-ghost is-icon" href="${back}" aria-label="Back">${ic('back', 18)}</a>` : `<a class="ui-brand" href="#/home"><span class="mark">${ic('hash', 14)}</span></a>`}<span class="tb-title">${title}</span>${extra}`;
+  $('#topbar').innerHTML = `${back ? `<a class="ui-btn is-ghost is-icon" href="${back}" aria-label="Back">${ic('back', 18)}</a>` : `<a data-tool="none" data-why="moves to another screen" class="ui-brand" href="#/home"><span class="mark">${ic('hash', 14)}</span></a>`}<span class="tb-title">${title}</span>${extra}`;
 }
 
 // ---------- routing ----------
@@ -304,7 +304,7 @@ function composerHtml(info, root) {
       <label class="attach" title="Attach a file"><input type="file" multiple data-tool="chat.upload_file" aria-label="Attach a file">${ic('clip', 17)}</label>
       <button type="button" class="ui-btn is-ghost is-icon is-sm" data-open="emoji-insert" data-tool="none" data-why="opens the emoji picker" aria-label="Add an emoji">${ic('smile', 17)}</button>
       ${root ? '' : '<span class="hint">Enter to send, Shift+Enter for a new line. @ to mention.</span>'}<span class="grow"></span>
-      <button type="submit" class="ui-btn is-accent is-sm" aria-label="Send">${ic('send', 15)}</button>
+      <button type="submit" class="ui-btn is-accent is-sm" data-tool="${root ? 'chat.post_reply' : 'chat.post_message'}" aria-label="Send">${ic('send', 15)}</button>
     </div>
   </form>`;
 }
@@ -367,7 +367,7 @@ async function showThread(channel, rootId) {
   S.thread = { channel, root: r.thread, messages: r.messages };
   const cv = S.convos.get(channel);
   const pane = $('#thread');
-  pane.innerHTML = `<header class="convo-h"><a class="ui-btn is-ghost is-icon is-sm home-only" href="#/c/${esc(channel)}" aria-label="Back to the channel">${ic('back', 18)}</a><div class="t"><h1>Thread</h1><p class="topic">${esc(chanLabel(cv?.info ?? r.channel))}</p></div><a class="ui-btn is-ghost is-icon is-sm desk-only" href="#/c/${esc(channel)}" aria-label="Close the thread">${ic('x', 17)}</a></header>
+  pane.innerHTML = `<header class="convo-h"><a data-tool="none" data-why="moves to another screen" class="ui-btn is-ghost is-icon is-sm home-only" href="#/c/${esc(channel)}" aria-label="Back to the channel">${ic('back', 18)}</a><div class="t"><h1>Thread</h1><p class="topic">${esc(chanLabel(cv?.info ?? r.channel))}</p></div><a data-tool="none" data-why="moves to another screen" class="ui-btn is-ghost is-icon is-sm desk-only" href="#/c/${esc(channel)}" aria-label="Close the thread">${ic('x', 17)}</a></header>
     <div class="stream" id="thread-stream"></div><div class="typing" id="thread-typing" aria-live="polite"></div>${composerHtml(cv?.info ?? { id: channel, member: true }, r.thread)}`;
   renderThread();
   if (!coarse()) $('#thread-composer textarea')?.focus({ preventScroll: true });
@@ -420,8 +420,8 @@ function applyRead(d) {
 
 async function showHome() {
   topbar({ title: esc(S.settings.team.name) });
-  $('#view').innerHTML = `<div class="panel-page"><nav class="home-list" aria-label="Channels and direct messages"><a class="side-search" href="#/search">${ic('search', 15)}<span>Search</span></a><div id="home-list"></div>
-    <div class="side-foot ui-side-nav"><a href="#/browse">${ic('hash')}<span>All channels</span></a></div></nav></div>`;
+  $('#view').innerHTML = `<div class="panel-page"><nav class="home-list" aria-label="Channels and direct messages"><a data-tool="none" data-why="moves to another screen" class="side-search" href="#/search">${ic('search', 15)}<span>Search</span></a><div id="home-list"></div>
+    <div class="side-foot ui-side-nav"><a data-tool="none" data-why="moves to another screen" href="#/browse">${ic('hash')}<span>All channels</span></a></div></nav></div>`;
   renderSide();
 }
 
@@ -429,7 +429,7 @@ async function showSearch(r) {
   topbar({ title: 'Search' });
   const q = r.q?.q ?? '';
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>Search</h1><p>Every channel you can see. Try in:#marketing or from:@jordan.</p></div></div>
-    <form class="search-form" data-tool="chat.search_messages" role="search"><label class="ui-search">${ic('search', 15)}<input name="q" value="${esc(q)}" placeholder="Search messages" aria-label="Search messages" enterkeyhint="search"></label><button class="ui-btn is-accent" type="submit">Search</button></form>
+    <form class="search-form" data-tool="chat.search_messages" role="search"><label class="ui-search">${ic('search', 15)}<input name="q" value="${esc(q)}" placeholder="Search messages" aria-label="Search messages" enterkeyhint="search"></label><button data-tool="chat.search_messages" class="ui-btn is-accent" type="submit">Search</button></form>
     <div id="results"></div></div></div>`;
   if (!coarse()) $('.search-form input').focus();
   if (q) await runSearch(q);
@@ -440,7 +440,7 @@ async function runSearch(q) {
   box.innerHTML = '<p class="mute">Searching</p>';
   try {
     const r = await call('chat.search_messages', { q });
-    box.innerHTML = r.results.length ? `<ul class="list">${r.results.map((m) => `<li><a class="hit" href="#/c/${esc(m.channel)}${m.thread_root ? `/t/${esc(m.thread_root)}` : `/m/${esc(m.id)}`}"><div class="msg"><span class="where">${esc(m.channel_name && !m.channel.startsWith('d_') ? `#${m.channel_name}` : m.channel_name)}${m.thread_root ? ' · in a thread' : ''} · ${esc(dayLabel(m.created_at))}</span>${messageInner(m)}</div></a></li>`).join('')}</ul>` : `<p class="empty-note">Nothing matches "${esc(q)}".</p>`;
+    box.innerHTML = r.results.length ? `<ul class="list">${r.results.map((m) => `<li><a data-tool="none" data-why="moves to another screen" class="hit" href="#/c/${esc(m.channel)}${m.thread_root ? `/t/${esc(m.thread_root)}` : `/m/${esc(m.id)}`}"><div class="msg"><span class="where">${esc(m.channel_name && !m.channel.startsWith('d_') ? `#${m.channel_name}` : m.channel_name)}${m.thread_root ? ' · in a thread' : ''} · ${esc(dayLabel(m.created_at))}</span>${messageInner(m)}</div></a></li>`).join('')}</ul>` : `<p class="empty-note">Nothing matches "${esc(q)}".</p>`;
   } catch (e) { box.innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
 }
 
@@ -457,7 +457,7 @@ async function showActivity() {
   renderSide();
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>Activity</h1><p>Messages that mention you, and anything an agent is waiting on you for.</p></div></div>
     ${S.approvals.length ? `<section class="sect"><h2>Waiting for your yes</h2><p>An app connected to your account asked to do these. Nothing happens until you say yes.</p><ul class="list">${S.approvals.map((a) => `<li class="row"><div class="grow"><b>${esc(a.title)}</b><small>Asked by ${esc(a.requested_by)} · ${esc(JSON.stringify(a.input))}</small></div><button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.decide_approval" data-approval="${esc(a.id)}" data-approve="false">Decline</button><button type="button" class="ui-btn is-accent is-sm" data-tool="chat.decide_approval" data-approval="${esc(a.id)}" data-approve="true">Approve</button></li>`).join('')}</ul></section>` : ''}
-    <section class="sect"><h2>Mentions</h2>${mentions.results.length ? `<ul class="list">${mentions.results.map((m) => `<li><a class="hit" href="#/c/${esc(m.channel)}${m.thread_root ? `/t/${esc(m.thread_root)}` : `/m/${esc(m.id)}`}"><div class="msg"><span class="where">${esc(m.channel_name && !m.channel.startsWith('d_') ? `#${m.channel_name}` : m.channel_name)} · ${esc(ago(m.created_at))}</span>${messageInner(m)}</div></a></li>`).join('')}</ul>` : '<p class="empty-note">No mentions yet.</p>'}</section>
+    <section class="sect"><h2>Mentions</h2>${mentions.results.length ? `<ul class="list">${mentions.results.map((m) => `<li><a data-tool="none" data-why="moves to another screen" class="hit" href="#/c/${esc(m.channel)}${m.thread_root ? `/t/${esc(m.thread_root)}` : `/m/${esc(m.id)}`}"><div class="msg"><span class="where">${esc(m.channel_name && !m.channel.startsWith('d_') ? `#${m.channel_name}` : m.channel_name)} · ${esc(ago(m.created_at))}</span>${messageInner(m)}</div></a></li>`).join('')}</ul>` : '<p class="empty-note">No mentions yet.</p>'}</section>
   </div></div>`;
 }
 
@@ -467,7 +467,7 @@ async function showBrowse() {
   S.browse = (await call('chat.list_channels', { browse: true, include_archived: true })).channels.filter((c) => !isDm(c));
   if (stale(n)) return;
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>All channels</h1><p>Public channels anyone on the team can join, and private ones you are in.</p></div><button type="button" class="ui-btn is-accent" data-open="new-channel" data-tool="none" data-why="opens the new channel form">${ic('plus', 15)} Create a channel</button></div>
-    <ul class="list">${S.browse.map((c) => `<li class="row"><span class="hash">${c.kind === 'private' ? ic('lock', 14) : '#'}</span><div class="grow"><a href="#/c/${esc(c.id)}"><b>${esc(c.name)}</b></a>${c.archived ? ' <span class="ui-chip is-outline">Archived</span>' : ''}<small>${c.member_count} ${c.member_count === 1 ? 'member' : 'members'}${c.topic ? ` · ${esc(c.topic)}` : ''}</small></div>${c.member ? '<span class="ui-chip is-soft">Joined</span>' : c.archived ? '' : `<button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.join_channel" data-channel="${esc(c.id)}">Join</button>`}</li>`).join('')}</ul></div></div>`;
+    <ul class="list">${S.browse.map((c) => `<li class="row"><span class="hash">${c.kind === 'private' ? ic('lock', 14) : '#'}</span><div class="grow"><a data-tool="none" data-why="moves to another screen" href="#/c/${esc(c.id)}"><b>${esc(c.name)}</b></a>${c.archived ? ' <span class="ui-chip is-outline">Archived</span>' : ''}<small>${c.member_count} ${c.member_count === 1 ? 'member' : 'members'}${c.topic ? ` · ${esc(c.topic)}` : ''}</small></div>${c.member ? '<span class="ui-chip is-soft">Joined</span>' : c.archived ? '' : `<button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.join_channel" data-channel="${esc(c.id)}">Join</button>`}</li>`).join('')}</ul></div></div>`;
 }
 
 async function showSettings() {
@@ -482,12 +482,12 @@ async function showSettings() {
   const host = location.origin;
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>Settings</h1><p>${esc(me.name)} · @${esc(me.handle)}</p></div>${s.team.demo ? '' : '<a class="ui-btn is-quiet" href="/logout">Sign out</a>'}</div>
     <section class="sect"><h2>Status</h2><p>What people see next to your name.</p>
-      <form class="inline-form" data-tool="chat.set_status"><label class="ui-field" style="max-width:110px;min-width:80px"><span>Emoji</span><input class="ui-input" name="emoji" value="${esc(me.status?.emoji ?? '')}" maxlength="16" placeholder="📅"></label><label class="ui-field"><span>Status</span><input class="ui-input" name="text" value="${esc(me.status?.text ?? '')}" maxlength="100" placeholder="In meetings till 3"></label><button class="ui-btn is-accent" type="submit">Save</button></form></section>
+      <form class="inline-form" data-tool="chat.set_status"><label class="ui-field" style="max-width:110px;min-width:80px"><span>Emoji</span><input class="ui-input" name="emoji" value="${esc(me.status?.emoji ?? '')}" maxlength="16" placeholder="📅"></label><label class="ui-field"><span>Status</span><input class="ui-input" name="text" value="${esc(me.status?.text ?? '')}" maxlength="100" placeholder="In meetings till 3"></label><button data-tool="chat.set_status" class="ui-btn is-accent" type="submit">Save</button></form></section>
     <section class="sect"><h2>Notifications</h2><p>Your usual rule for every channel. Each channel can have its own from its bell. Direct messages and replies to your threads always count.</p>
       ${seg('chat.set_notify', 'level', s.prefs.notify, [['all', 'Every message'], ['mentions', 'Mentions'], ['none', 'Nothing']])}
       <p style="margin-top:14px">${pushSupported ? (s.push.devices ? `Notifications are on for ${s.push.devices} ${s.push.devices === 1 ? 'device' : 'devices'}. ` : 'Get mentions and direct messages on this device, even with the tab closed. ') : 'This browser cannot show notifications. On an iPhone, add this page to your home screen first.'}</p>
       ${pushSupported ? `<button type="button" class="ui-btn is-quiet" data-tool="chat.subscribe_push">Turn on for this device</button> ${s.push.devices ? '<button type="button" class="ui-btn is-ghost" data-tool="chat.unsubscribe_push">Turn off everywhere</button>' : ''}` : ''}
-      <form class="inline-form" data-tool="chat.set_preferences" style="margin-top:16px"><label class="ui-field"><span>Keywords <small>words that notify you in any channel you are in, comma separated</small></span><input class="ui-input" name="keywords" value="${esc((s.prefs.keywords ?? []).join(', '))}" placeholder="invoice, x-ray"></label><button class="ui-btn is-quiet" type="submit">Save keywords</button></form></section>
+      <form class="inline-form" data-tool="chat.set_preferences" style="margin-top:16px"><label class="ui-field"><span>Keywords <small>words that notify you in any channel you are in, comma separated</small></span><input class="ui-input" name="keywords" value="${esc((s.prefs.keywords ?? []).join(', '))}" placeholder="invoice, x-ray"></label><button data-tool="chat.set_preferences" class="ui-btn is-quiet" type="submit">Save keywords</button></form></section>
     <section class="sect"><h2>Look</h2>${seg('chat.set_preferences', 'theme', s.prefs.theme, [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']])}</section>
     ${admin ? await teamSection() : ''}
     <section class="sect"><h2>Connect an assistant</h2><p>Claude, ChatGPT, Claude Code, Codex or any MCP app can read and post here as you, with the same tools as this screen. Add this address as a connector and sign in.</p>
@@ -495,7 +495,7 @@ async function showSettings() {
       <p class="mute" style="margin-top:8px;font-size:12.5px">Apps that do not allow dots in tool names can use ${esc(host)}/mcp?names=underscore. The full tool list is at <a href="/tools.json">/tools.json</a>.</p></section>
     <section class="sect"><h2>Your data</h2><p>Download everything: every channel, message, reaction, file and person, in the same layout as a Slack export, so you can move again any time.</p>
       ${admin ? '<button type="button" class="ui-btn is-quiet" data-tool="chat.export_data">Export everything</button> <span id="export-out"></span>' : '<p class="mute">Team owners and admins can export.</p>'}
-      ${admin ? `<form class="inline-form" data-tool="chat.import_slack" style="margin-top:16px"><label class="ui-field"><span>Coming from Slack? <small>Check what your Slack export holds. Bringing it in arrives in the next version.</small></span><input class="ui-input" type="file" name="file" accept=".zip,application/zip" required></label><button class="ui-btn is-quiet" type="submit">Check the export</button></form><div id="import-out"></div>` : ''}</section>
+      ${admin ? `<form class="inline-form" data-tool="chat.import_slack" style="margin-top:16px"><label class="ui-field"><span>Coming from Slack? <small>Check what your Slack export holds. Bringing it in arrives in the next version.</small></span><input class="ui-input" type="file" name="file" accept=".zip,application/zip" required></label><button data-tool="chat.import_slack" class="ui-btn is-quiet" type="submit">Check the export</button></form><div id="import-out"></div>` : ''}</section>
     <section class="sect"><h2>Where this runs</h2><div class="two">
       <div class="ui-card"><h3>Host it yourself, free</h3><p>One Docker command and any Postgres, or SQLite on one computer. No licence key, no limits. Files on disk or any S3 store. Your data never leaves you.</p></div>
       <div class="ui-card"><h3>Host it with us</h3><p>We run it for you and charge what it costs us, times two, shown openly. Move to your own server any time with one export.</p></div>
@@ -509,8 +509,8 @@ async function teamSection() {
     <ul class="list">${people.map((p) => `<li class="row">${avatar(p)}<div class="grow"><b>${esc(p.name)}</b> <span class="mute">@${esc(p.handle)}</span>${p.kind === 'agent' ? ` <span class="ui-chip is-outline">${p.agent?.example ? 'Example agent' : 'Agent'}</span>` : ''}<small>${esc(p.kind === 'agent' ? (p.agent?.description || 'AI agent') : [p.role, p.email, p.github && `GitHub ${p.github}`].filter(Boolean).join(' · '))}</small></div>
       ${p.id !== S.me.id ? `<button type="button" class="ui-btn is-ghost is-sm" data-tool="chat.open_dm" data-people="${esc(p.handle)}">Message</button>` : ''}
       ${p.id !== S.me.id && p.role !== 'owner' ? `<button type="button" class="ui-btn is-danger is-sm" data-tool="chat.remove_person" data-person="${esc(p.handle)}">Remove</button>` : ''}</li>`).join('')}</ul>
-    <form class="inline-form" data-tool="chat.add_person" style="margin-top:14px"><label class="ui-field"><span>Name</span><input class="ui-input" name="name" required placeholder="Casey Morgan"></label><label class="ui-field"><span>Email</span><input class="ui-input" type="email" name="email" placeholder="casey@company.example"></label><label class="ui-field"><span>GitHub <small>optional</small></span><input class="ui-input" name="github" placeholder="username"></label><button class="ui-btn is-quiet" type="submit">Add person</button></form>
-    <form class="inline-form" data-tool="chat.add_agent" style="margin-top:14px"><label class="ui-field"><span>Agent name</span><input class="ui-input" name="name" required placeholder="Helper"></label><label class="ui-field"><span>What it does</span><input class="ui-input" name="description" placeholder="Answers questions about our schedule"></label><button class="ui-btn is-quiet" type="submit">Add agent</button></form></section>`;
+    <form class="inline-form" data-tool="chat.add_person" style="margin-top:14px"><label class="ui-field"><span>Name</span><input class="ui-input" name="name" required placeholder="Casey Morgan"></label><label class="ui-field"><span>Email</span><input class="ui-input" type="email" name="email" placeholder="casey@company.example"></label><label class="ui-field"><span>GitHub <small>optional</small></span><input class="ui-input" name="github" placeholder="username"></label><button data-tool="chat.add_person" class="ui-btn is-quiet" type="submit">Add person</button></form>
+    <form class="inline-form" data-tool="chat.add_agent" style="margin-top:14px"><label class="ui-field"><span>Agent name</span><input class="ui-input" name="name" required placeholder="Helper"></label><label class="ui-field"><span>What it does</span><input class="ui-input" name="description" placeholder="Answers questions about our schedule"></label><button data-tool="chat.add_agent" class="ui-btn is-quiet" type="submit">Add agent</button></form></section>`;
 }
 
 // ---------- popovers and dialogs ----------
@@ -582,25 +582,25 @@ const OPEN = {
       <label class="ui-field"><span>Name</span><input class="ui-input" name="name" required maxlength="80" placeholder="launch-plans" pattern="[a-zA-Z0-9][a-zA-Z0-9 _-]*" autofocus></label>
       <label class="ui-field"><span>Topic <small>optional</small></span><input class="ui-input" name="topic" maxlength="250" placeholder="What it is for"></label>
       <label class="ui-check"><input type="checkbox" name="private"> Private: only people you add can see it</label></div>
-      <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close data-tool="none" data-why="closes this without changing anything">Cancel</button><button class="ui-btn is-accent" type="submit">Create</button></div></form>`);
+      <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close data-tool="none" data-why="closes this without changing anything">Cancel</button><button data-tool="chat.create_channel" class="ui-btn is-accent" type="submit">Create</button></div></form>`);
   },
   'new-dm'() {
     const others = S.people.filter((p) => p.id !== S.me.id);
     dialog('new-dm', 'New message', `<form data-tool="chat.open_dm" id="f-new-dm"><div class="ui-dialog-b"><p class="mute" style="margin:0 0 10px">Pick one person or agent, or several for a group message.</p><div class="checks">${others.map((p) => `<label><input type="checkbox" name="people" value="${esc(p.handle)}">${avatar(p, 'is-sm')}<span>${esc(p.name)} <span class="mute">@${esc(p.handle)}</span>${p.kind === 'agent' ? ' <span class="ui-chip is-outline">Agent</span>' : ''}</span></label>`).join('')}</div></div>
-      <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close data-tool="none" data-why="closes this without changing anything">Cancel</button><button class="ui-btn is-accent" type="submit">Open</button></div></form>`);
+      <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close data-tool="none" data-why="closes this without changing anything">Cancel</button><button data-tool="chat.open_dm" class="ui-btn is-accent" type="submit">Open</button></div></form>`);
   },
   members(el) {
     const info = S.convos.get(el.dataset.channel)?.info;
     if (!info) return;
     const outside = S.people.filter((p) => !info.members.some((m) => m.id === p.id));
     dialog('members', `People in ${esc(chanLabel(info))}`, `<div class="ui-dialog-b"><ul class="list">${info.members.map((m) => `<li class="row">${avatar(m, 'is-sm')}<div class="grow"><b>${esc(m.name)}</b> <span class="mute">@${esc(m.handle)}</span>${m.kind === 'agent' ? ' <span class="ui-chip is-outline">Agent</span>' : ''}</div>${m.id !== S.me.id ? `<button type="button" class="ui-btn is-ghost is-sm" data-tool="chat.open_dm" data-people="${esc(m.handle)}">Message</button>` : '<span class="mute">You</span>'}</li>`).join('')}</ul>
-      ${info.kind !== 'dm' && info.member && !info.archived && outside.length ? `<form data-tool="chat.invite_people" data-channel="${esc(info.id)}" class="inline-form" style="margin-top:14px"><label class="ui-field"><span>Add someone</span><select class="ui-select" name="people">${outside.map((p) => `<option value="${esc(p.handle)}">${esc(p.name)}${p.kind === 'agent' ? ' (agent)' : ''}</option>`).join('')}</select></label><button class="ui-btn is-quiet" type="submit">Add</button></form>` : ''}</div>
+      ${info.kind !== 'dm' && info.member && !info.archived && outside.length ? `<form data-tool="chat.invite_people" data-channel="${esc(info.id)}" class="inline-form" style="margin-top:14px"><label class="ui-field"><span>Add someone</span><select class="ui-select" name="people">${outside.map((p) => `<option value="${esc(p.handle)}">${esc(p.name)}${p.kind === 'agent' ? ' (agent)' : ''}</option>`).join('')}</select></label><button data-tool="chat.invite_people" class="ui-btn is-quiet" type="submit">Add</button></form>` : ''}</div>
       <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close data-tool="none" data-why="closes this without changing anything">Done</button></div>`);
   },
   topic(el) {
     const info = S.convos.get(el.dataset.channel)?.info;
     dialog('topic', 'Edit topic', `<form data-tool="chat.set_topic" data-channel="${esc(info.id)}"><div class="ui-dialog-b"><label class="ui-field"><span>Topic</span><input class="ui-input" name="topic" maxlength="250" value="${esc(info.topic ?? '')}" autofocus></label></div>
-      <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close data-tool="none" data-why="closes this without changing anything">Cancel</button><button class="ui-btn is-accent" type="submit">Save</button></div></form>`);
+      <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close data-tool="none" data-why="closes this without changing anything">Cancel</button><button data-tool="chat.set_topic" class="ui-btn is-accent" type="submit">Save</button></div></form>`);
   },
 };
 
@@ -658,7 +658,7 @@ const ACT = {
     const m = findMessage(el.dataset.message);
     const box = $$(`#m-${CSS.escape(m.id)} .msg-text`).pop();
     if (!box) return;
-    box.outerHTML = `<form class="edit-form" data-tool="chat.edit_message" data-message="${esc(m.id)}"><textarea class="ui-textarea" name="body" rows="3" aria-label="Edit message">${esc(m.body)}</textarea><div class="row"><button type="button" class="ui-btn is-ghost is-sm" data-close data-tool="none" data-why="closes this without changing anything" data-rerender>Cancel</button><button class="ui-btn is-accent is-sm" type="submit">Save</button></div></form>`;
+    box.outerHTML = `<form class="edit-form" data-tool="chat.edit_message" data-message="${esc(m.id)}"><textarea class="ui-textarea" name="body" rows="3" aria-label="Edit message">${esc(m.body)}</textarea><div class="row"><button type="button" class="ui-btn is-ghost is-sm" data-close data-tool="none" data-why="closes this without changing anything" data-rerender>Cancel</button><button data-tool="chat.edit_message" class="ui-btn is-accent is-sm" type="submit">Save</button></div></form>`;
     const ta = $(`#m-${CSS.escape(m.id)} .edit-form textarea`);
     ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
   },
@@ -1013,7 +1013,7 @@ const onClick = async (e) => {
     close.closest('dialog')?.close();
     return;
   }
-  const btn = t.closest('button[data-tool], [role=menuitem][data-tool]');
+  const btn = t.closest('button[data-tool]:not([type=submit]), [role=menuitem][data-tool]');
   if (btn && ACT[btn.dataset.tool]) {
     e.preventDefault();
     btn.disabled = true;
