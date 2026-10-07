@@ -33,7 +33,7 @@ async function mcp(p, { query = '', scopes } = {}) {
 test('health, manifest and catalogue are served', async () => {
   const h = await fetch(`${base}/health`).then((r) => r.json());
   assert.equal(h.ok, true);
-  assert.equal(h.storage, 'sqlite');
+  assert.ok(['sqlite', 'postgres'].includes(h.storage));
   const m = await fetch(`${base}/wos-app.json`).then((r) => r.json());
   assert.equal(m.id, 'chat');
   const c = await fetch(`${base}/tools.json`).then((r) => r.json());
@@ -153,9 +153,10 @@ test('email link: a known person signs in; a stranger is told nothing', async ()
 });
 
 test('a brand-new server: the first person to sign in becomes the owner', async () => {
-  const fresh = await makeApp({ CHAT_TEAM_ID: 'fresh' });
+  const fresh = await makeApp();
+  const empty = `empty-${Date.now().toString(36)}`;
   // makeApp already added people to "fresh"; use another team id for an empty one.
-  fresh.app.teamId = 'empty-team';
+  fresh.app.teamId = empty;
   const { ensureTeamSetup } = await import('../lib/app.mjs');
   await ensureTeamSetup(fresh.app);
   fresh.app.mailer = await createMailer({});
@@ -165,7 +166,7 @@ test('a brand-new server: the first person to sign in becomes the owner', async 
   await fetch(`${b}/auth/email`, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'email=first%40acme-dental.example' });
   const link = /http\S+verify\?t=\S+/.exec(fresh.app.mailer.sent[0].text)[0];
   await fetch(link.replace(/^https?:\/\/[^/]+/, b), { redirect: 'manual' });
-  const owner = await fresh.app.chat.findPerson('empty-team', 'first');
+  const owner = await fresh.app.chat.findPerson(empty, 'first');
   assert.equal(owner.role, 'owner');
   s.close();
 });
