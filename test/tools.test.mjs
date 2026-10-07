@@ -37,7 +37,7 @@ test('every tool is fully described, and tools.json is current', () => {
     assert.equal(x.input?.type, 'object', `${x.name} input schema`);
     assert.ok(x.output && (x.output.type === 'object' || x.output.anyOf || x.output.allOf), `${x.name} output schema`);
     assert.ok(Array.isArray(x.emits), `${x.name} emits`);
-    assert.ok(!/—/.test(x.description), `${x.name}: no em dashes`);
+    assert.ok(!/\u2014/.test(x.description), `${x.name}: no em dashes`);
   }
   for (const n of ['chat.list_channels', 'chat.read', 'chat.post', 'chat.reply', 'chat.react', 'chat.search', 'chat.create_channel', 'chat.invite', 'chat.set_status', 'chat.edit', 'chat.delete', 'chat.mark_read', 'chat.set_notify']) assert.ok(names.has(n), `ROADMAP 5.3 names ${n}`);
   const file = JSON.parse(fs.readFileSync(new URL('../tools.json', import.meta.url)));
