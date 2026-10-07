@@ -194,7 +194,12 @@ function parseRoute() {
   return { view: 'start' };
 }
 
+// A slower screen must never draw over a newer one: each route has a number, and stale ones stop.
+let routeSeq = 0;
+const stale = (n) => n !== routeSeq;
+
 async function route() {
+  routeSeq++;
   lastRouted = CTX.path;
   const r = parseRoute();
   closePops();
@@ -245,7 +250,9 @@ async function loadConvo(id, { focus } = {}) {
 async function showConvo(r) {
   const prevChannel = S.current;
   S.current = r.channel;
+  const n = routeSeq;
   const cv = await loadConvo(r.channel, { focus: r.focus });
+  if (stale(n)) return;
   const info = cv.info;
   try { localStorage.setItem('chat.last', r.channel); } catch {}
   // Where the "new" line goes: what was unread when you opened the channel.
@@ -354,7 +361,9 @@ function renderStream(focus = null) {
 }
 
 async function showThread(channel, rootId) {
+  const n = routeSeq;
   const r = await call('chat.read_messages', { thread: rootId });
+  if (stale(n) || !$('#thread')) return;
   S.thread = { channel, root: r.thread, messages: r.messages };
   const cv = S.convos.get(channel);
   const pane = $('#thread');
@@ -441,7 +450,9 @@ function messageInner(m) {
 
 async function showActivity() {
   topbar({ title: 'Activity' });
+  const n = routeSeq;
   const [mentions, approvals] = await Promise.all([call('chat.list_mentions', { limit: 40 }), call('chat.list_approvals')]);
+  if (stale(n)) return;
   S.approvals = approvals.approvals;
   renderSide();
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>Activity</h1><p>Messages that mention you, and anything an agent is waiting on you for.</p></div></div>
@@ -452,14 +463,18 @@ async function showActivity() {
 
 async function showBrowse() {
   topbar({ title: 'All channels' });
+  const n = routeSeq;
   S.browse = (await call('chat.list_channels', { browse: true, include_archived: true })).channels.filter((c) => !isDm(c));
+  if (stale(n)) return;
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>All channels</h1><p>Public channels anyone on the team can join, and private ones you are in.</p></div><button type="button" class="ui-btn is-accent" data-open="new-channel" data-tool="none" data-why="opens the new channel form">${ic('plus', 15)} Create a channel</button></div>
     <ul class="list">${S.browse.map((c) => `<li class="row"><span class="hash">${c.kind === 'private' ? ic('lock', 14) : '#'}</span><div class="grow"><a href="#/c/${esc(c.id)}"><b>${esc(c.name)}</b></a>${c.archived ? ' <span class="ui-chip is-outline">Archived</span>' : ''}<small>${c.member_count} ${c.member_count === 1 ? 'member' : 'members'}${c.topic ? ` · ${esc(c.topic)}` : ''}</small></div>${c.member ? '<span class="ui-chip is-soft">Joined</span>' : c.archived ? '' : `<button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.join_channel" data-channel="${esc(c.id)}">Join</button>`}</li>`).join('')}</ul></div></div>`;
 }
 
 async function showSettings() {
   topbar({ title: 'Settings' });
+  const n = routeSeq;
   const s = S.settings = await call('chat.get_settings');
+  if (stale(n)) return;
   const admin = ['owner', 'admin'].includes(s.me.role);
   const me = person(S.me.id) ?? S.me;
   const seg = (tool, field, value, options) => `<div class="ui-seg" role="group">${options.map(([v, l]) => `<button type="button" data-tool="${tool}" data-${field}="${v}" aria-pressed="${v === value}">${l}</button>`).join('')}</div>`;
