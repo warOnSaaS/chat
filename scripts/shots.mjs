@@ -43,7 +43,7 @@ for (const mode of ['dark', 'light']) {
     await go(`#/c/${ids['front-desk']}`, '.msg'); await snap('channel');
     const root = await page.evaluate(() => [...window.chatState.convos.values()].flatMap((c) => c.messages).find((m) => m.reply_count)?.id);
     await go(`#/c/${ids.marketing}`, '.msg');
-    const mroot = await page.evaluate(() => [...window.chatState.convos.values()].flatMap((c) => c.messages).filter((m) => m.reply_count).pop()?.id);
+    const mroot = await page.evaluate((id) => window.chatState.convos.get(id)?.messages.find((m) => m.reply_count)?.id, ids.marketing);
     await go(`#/c/${ids.marketing}/t/${mroot ?? root}`, '#thread .msg'); await snap('thread');
     // Ask the example agent in the thread, and see it answer there.
     await page.fill('#thread-composer textarea', '@scout summarise this thread');

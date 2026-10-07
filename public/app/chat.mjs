@@ -362,6 +362,8 @@ async function showThread(channel, rootId) {
   const n = routeSeq;
   const r = await call('chat.read_messages', { thread: rootId });
   if (stale(n) || !$('#thread')) return;
+  // The thread's own channel decides the header, whatever the address said.
+  channel = r.channel.id;
   S.thread = { channel, root: r.thread, messages: r.messages };
   const cv = S.convos.get(channel);
   const pane = $('#thread');
