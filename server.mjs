@@ -37,16 +37,27 @@ export const hostOf = (req) => {
 // On Vercel every request is rewritten to the one function with the original path in ?__p.
 const pathOf = (req) => { const u = new URL(req.url, 'http://x'); return { url: u, p: u.searchParams.get('__p') ?? u.pathname }; };
 
-export function createServer(appOrPromise = createApp()) {
-  const ready = Promise.resolve(appOrPromise).then(async (app) => {
-    app.mailer ??= await createMailer(app.env);
-    attachLive(app, wss);
-    return app;
-  });
-  ready.catch((e) => console.error('chat: could not start:', e));
+export function createServer(appOrPromise) {
+  // A start that fails (the database briefly out of reach on a cold start) is tried again on the next
+  // request, at most every five seconds, instead of leaving this copy of the server broken for its life.
+  const start = (x) => {
+    const p = Promise.resolve(x ?? createApp()).then(async (app) => {
+      app.mailer ??= await createMailer(app.env);
+      attachLive(app, wss);
+      return app;
+    });
+    p.catch((e) => { console.error('chat: could not start:', e); failedAt = Date.now(); });
+    return p;
+  };
+  let failedAt = 0;
+  let ready = start(appOrPromise);
+  const getReady = () => {
+    if (failedAt && !appOrPromise && Date.now() - failedAt > 5000) { failedAt = 0; ready = start(); server.ready = ready; }
+    return ready;
+  };
   const server = http.createServer(async (req, res) => {
     let app;
-    try { app = await ready; } catch { return json(res, 503, { error: 'The chat server could not start. Check DATABASE_URL and the server log.' }); }
+    try { app = await getReady(); } catch { return json(res, 503, { error: 'The chat server could not start. Check DATABASE_URL and the server log.' }); }
     try { await route(app, req, res); } catch (e) {
       if (!(e instanceof ChatError)) console.error(e);
       if (!res.headersSent) json(res, e.status ?? 500, { error: e instanceof ChatError ? { code: e.code, message: e.message } : { code: 'server', message: 'Something went wrong on our side. Try again.' } });
@@ -57,7 +68,7 @@ export function createServer(appOrPromise = createApp()) {
     const { p } = pathOf(req);
     if (p !== '/ws') return socket.destroy();
     let app;
-    try { app = await ready; } catch { return socket.destroy(); }
+    try { app = await getReady(); } catch { return socket.destroy(); }
     const who = await identify(app, req).catch(() => null);
     if (!who) { socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n'); return socket.destroy(); }
     wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req, who, app));
