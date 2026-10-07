@@ -1,16 +1,12 @@
 {
+  "$schema": "https://raw.githubusercontent.com/warOnSaaS/suite/main/packages/tools/tools.schema.json",
   "app": "chat",
-  "version": "0.1.0",
-  "format": "wos-tools/1",
-  "note": "Every tool is served at POST /api/tools/<name> and over MCP at /mcp. Screens call the same tools.",
+  "version": 1,
   "tools": [
     {
       "name": "chat.list_channels",
       "title": "List channels",
       "description": "The channels and direct messages you are in, with unread and mention counts. browse: true adds public channels you have not joined.",
-      "scope": "read",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -70,15 +66,16 @@
           "channels"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "read",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.get_channel",
       "title": "Open a channel",
       "description": "One channel: its topic, who is in it, your notification rule for it and its unread count.",
-      "scope": "read",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -155,15 +152,16 @@
           "members"
         ],
         "additionalProperties": true
-      }
-    },
-    {
-      "name": "chat.read",
-      "title": "Read messages",
-      "description": "Messages in a channel, oldest first (the latest 50 by default; before gives older ones). Give thread instead to read one thread: its first message and every reply.",
+      },
       "scope": "read",
       "confirm": "none",
       "emits": [],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.read_messages",
+      "title": "Read messages",
+      "description": "Messages in a channel, oldest first (the latest 50 by default; before gives older ones). Give thread instead to read one thread: its first message and every reply.",
       "input": {
         "type": "object",
         "properties": {
@@ -279,15 +277,16 @@
           "messages"
         ],
         "additionalProperties": false
-      }
-    },
-    {
-      "name": "chat.search",
-      "title": "Search messages",
-      "description": "Find messages by words, in every channel you can see. Narrow with channel and from, or write in:#channel and from:@person among the words.",
+      },
       "scope": "read",
       "confirm": "none",
       "emits": [],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.search_messages",
+      "title": "Search messages",
+      "description": "Find messages by words, in every channel you can see. Narrow with channel and from, or write in:#channel and from:@person among the words.",
       "input": {
         "type": "object",
         "properties": {
@@ -383,15 +382,16 @@
           "results"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "read",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.list_mentions",
       "title": "Mentions",
       "description": "Messages that mention you, newest first.",
-      "scope": "read",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -470,15 +470,16 @@
           "results"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "read",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.list_people",
       "title": "List people and agents",
       "description": "Everyone on the team, people and agents, with handles to @mention and their status. me is you.",
-      "scope": "read",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {},
@@ -560,15 +561,16 @@
           "people"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "read",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.list_events",
       "title": "What changed",
       "description": "Everything that happened since a cursor: new, edited and deleted messages, reactions, channel changes. Returns a new cursor. Screens use it to catch up after being away, and as the live feed when WebSockets are not available.",
-      "scope": "read",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -616,15 +618,16 @@
           "cursor"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "read",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.get_settings",
       "title": "Your settings",
       "description": "Your notification rule, keywords, theme, push devices, the server push key, and whether agents have a real model.",
-      "scope": "read",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {},
@@ -673,17 +676,16 @@
           "team"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "read",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
-      "name": "chat.post",
+      "name": "chat.post_message",
       "title": "Post a message",
       "description": "Post a message to a channel or direct message. Markdown works. @handle mentions someone (and wakes an agent); @channel tells everyone in it. files: ids from chat.upload_file.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "message.posted"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -765,18 +767,18 @@
           "created_at"
         ],
         "additionalProperties": true
-      }
-    },
-    {
-      "name": "chat.reply",
-      "title": "Reply in a thread",
-      "description": "Reply in the thread of a message (any message in the thread works). Mention an agent here and it answers in the same thread.",
+      },
       "scope": "write",
       "confirm": "none",
       "emits": [
-        "message.posted",
-        "thread.updated"
+        "chat.message.posted"
       ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.post_reply",
+      "title": "Reply in a thread",
+      "description": "Reply in the thread of a message (any message in the thread works). Mention an agent here and it answers in the same thread.",
       "input": {
         "type": "object",
         "properties": {
@@ -857,17 +859,19 @@
           "created_at"
         ],
         "additionalProperties": true
-      }
-    },
-    {
-      "name": "chat.edit",
-      "title": "Edit a message",
-      "description": "Change the words of one of your own messages.",
+      },
       "scope": "write",
       "confirm": "none",
       "emits": [
-        "message.edited"
+        "chat.message.posted",
+        "chat.thread.updated"
       ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.edit_message",
+      "title": "Edit a message",
+      "description": "Change the words of one of your own messages.",
       "input": {
         "type": "object",
         "properties": {
@@ -941,17 +945,18 @@
           "created_at"
         ],
         "additionalProperties": true
-      }
-    },
-    {
-      "name": "chat.delete",
-      "title": "Delete a message",
-      "description": "Delete one of your messages (admins can delete anyone's). The words are wiped. Only when the person clearly asks.",
-      "scope": "delete",
+      },
+      "scope": "write",
       "confirm": "none",
       "emits": [
-        "message.deleted"
+        "chat.message.edited"
       ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.delete_message",
+      "title": "Delete a message",
+      "description": "Delete one of your messages (admins can delete anyone's). The words are wiped. Only when the person clearly asks.",
       "input": {
         "type": "object",
         "properties": {
@@ -981,17 +986,18 @@
           "deleted"
         ],
         "additionalProperties": false
-      }
-    },
-    {
-      "name": "chat.react",
-      "title": "React",
-      "description": "Add an emoji reaction to a message, or take yours off with remove: true.",
-      "scope": "write",
+      },
+      "scope": "delete",
       "confirm": "none",
       "emits": [
-        "reaction.changed"
+        "chat.message.deleted"
       ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.add_reaction",
+      "title": "React",
+      "description": "Add an emoji reaction to a message. Reacting twice with the same emoji changes nothing.",
       "input": {
         "type": "object",
         "properties": {
@@ -1003,9 +1009,6 @@
           "emoji": {
             "type": "string",
             "description": "One emoji, like 👍"
-          },
-          "remove": {
-            "type": "boolean"
           }
         },
         "required": [
@@ -1045,15 +1048,79 @@
           "reactions"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.reaction.changed"
+      ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.remove_reaction",
+      "title": "Take back a reaction",
+      "description": "Take your own emoji reaction off a message.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A message id, like m_0mfx3k2a1000a1b2c"
+          },
+          "emoji": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message",
+          "emoji"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "reactions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "emoji": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "emoji",
+                "count"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "message",
+          "reactions"
+        ],
+        "additionalProperties": false
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.reaction.changed"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.upload_file",
       "title": "Upload a file",
-      "description": "Upload a file (as base64) to attach to a message with chat.post or chat.reply. The screens stream files to /files instead; this is the same thing for agents.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [],
+      "description": "Upload a file (as base64) to attach to a message with chat.post_message or chat.post_reply. The screens stream files to /files instead; this is the same thing for agents.",
       "input": {
         "type": "object",
         "properties": {
@@ -1101,17 +1168,16 @@
           "url"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.set_typing",
       "title": "Typing",
       "description": "Tell others in a channel (or thread) that you are typing. Lasts a few seconds; nothing is stored.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "typing"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1142,18 +1208,18 @@
           "ok"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.typing.started"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.create_channel",
       "title": "Create a channel",
       "description": "Make a channel. Public channels anyone on the team can find and join; private ones only invited people see.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "channel.created",
-        "member.joined"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1214,17 +1280,19 @@
           "name"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.channel.created",
+        "chat.member.joined"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.open_dm",
       "title": "Message someone directly",
-      "description": "Open (or find) a direct message with one person or agent, or a group message with up to 8. Then post to it with chat.post.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "channel.created"
-      ],
+      "description": "Open (or find) a direct message with one person or agent, or a group message with up to 8. Then post to it with chat.post_message.",
       "input": {
         "type": "object",
         "properties": {
@@ -1277,17 +1345,18 @@
           "name"
         ],
         "additionalProperties": true
-      }
-    },
-    {
-      "name": "chat.invite",
-      "title": "Add people to a channel",
-      "description": "Add people or agents to a channel you are in. Adding an agent lets it answer when mentioned there.",
+      },
       "scope": "write",
       "confirm": "none",
       "emits": [
-        "member.joined"
+        "chat.channel.created"
       ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.invite_people",
+      "title": "Add people to a channel",
+      "description": "Add people or agents to a channel you are in. Adding an agent lets it answer when mentioned there.",
       "input": {
         "type": "object",
         "properties": {
@@ -1329,17 +1398,18 @@
           "added"
         ],
         "additionalProperties": false
-      }
-    },
-    {
-      "name": "chat.join",
-      "title": "Join a channel",
-      "description": "Join a public channel.",
+      },
       "scope": "write",
       "confirm": "none",
       "emits": [
-        "member.joined"
+        "chat.member.joined"
       ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.join_channel",
+      "title": "Join a channel",
+      "description": "Join a public channel.",
       "input": {
         "type": "object",
         "properties": {
@@ -1388,17 +1458,18 @@
           "name"
         ],
         "additionalProperties": true
-      }
-    },
-    {
-      "name": "chat.leave",
-      "title": "Leave a channel",
-      "description": "Leave a channel. You can rejoin a public one any time; a private one needs an invite.",
+      },
       "scope": "write",
       "confirm": "none",
       "emits": [
-        "member.left"
+        "chat.member.joined"
       ],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.leave_channel",
+      "title": "Leave a channel",
+      "description": "Leave a channel. You can rejoin a public one any time; a private one needs an invite.",
       "input": {
         "type": "object",
         "properties": {
@@ -1428,17 +1499,18 @@
           "left"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.member.left"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.set_topic",
       "title": "Set the topic",
       "description": "Set or clear (empty) the one-line topic shown at the top of a channel.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "channel.updated"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1492,17 +1564,18 @@
           "name"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.channel.updated"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.archive_channel",
       "title": "Archive a channel",
       "description": "Archive a channel: it stays readable and searchable but nobody can post. archived: false brings it back.",
-      "scope": "admin",
-      "confirm": "none",
-      "emits": [
-        "channel.updated"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1554,17 +1627,18 @@
           "name"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "admin",
+      "confirm": "none",
+      "emits": [
+        "chat.channel.updated"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.set_status",
       "title": "Set your status",
       "description": "Set your status line and emoji, like \"In meetings\" 📅. Empty clears it.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "person.updated"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1610,17 +1684,18 @@
           "role"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.person.updated"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.add_person",
       "title": "Add someone to the team",
       "description": "Let someone sign in: by GitHub username, by email (for the email link), or both. They join #general.",
-      "scope": "admin",
-      "confirm": "none",
-      "emits": [
-        "person.added"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1682,17 +1757,18 @@
           "role"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "admin",
+      "confirm": "none",
+      "emits": [
+        "chat.person.added"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.remove_person",
       "title": "Remove someone from the team",
       "description": "Take someone off the team: they are signed out and leave every channel. Their messages stay. An agent calling this asks a person first.",
-      "scope": "admin",
-      "confirm": "human",
-      "emits": [
-        "person.removed"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1737,18 +1813,18 @@
           "role"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "admin",
+      "confirm": "human",
+      "emits": [
+        "chat.person.removed"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.add_agent",
       "title": "Add an agent",
       "description": "Add an AI agent as a team member. It answers in the thread when @mentioned in a channel it is in, or when messaged directly. It uses the server's model (CHAT_MODEL_URL, CHAT_MODEL_KEY, CHAT_MODEL) unless you give it its own.",
-      "scope": "admin",
-      "confirm": "none",
-      "emits": [
-        "person.added",
-        "member.joined"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1816,17 +1892,19 @@
           "role"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "admin",
+      "confirm": "none",
+      "emits": [
+        "chat.person.added",
+        "chat.member.joined"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.mark_read",
       "title": "Mark as read",
       "description": "Mark a channel read, up to the newest message or up to a given message.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "read.changed"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1872,17 +1950,18 @@
           "mentions"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.read.changed"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.mark_unread",
       "title": "Mark unread",
       "description": "Mark a channel unread from a message on, to come back to it later.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [
-        "read.changed"
-      ],
       "input": {
         "type": "object",
         "properties": {
@@ -1923,15 +2002,18 @@
           "mentions"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [
+        "chat.read.changed"
+      ],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.set_notify",
       "title": "Notification rule",
       "description": "When to be notified. For one channel: all, mentions, none, or default (follow your own rule). Without a channel: your own rule for every channel, all, mentions or none. Direct messages always notify unless set to none.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -1970,15 +2052,16 @@
           "level"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.set_preferences",
       "title": "Preferences",
       "description": "Your preferences: theme (auto, light, dark), push (true or false: phone and desktop notifications), keywords (words that notify you anywhere).",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -2029,15 +2112,16 @@
           "notify"
         ],
         "additionalProperties": true
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.subscribe_push",
       "title": "Turn on notifications on this device",
       "description": "Save a browser push subscription so mentions and direct messages reach this device. The browser asks the person first; an agent cannot click that.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -2092,15 +2176,16 @@
           "devices"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.unsubscribe_push",
       "title": "Turn off notifications on a device",
       "description": "Stop push notifications to one device (its endpoint) or, without one, to all your devices.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -2125,15 +2210,16 @@
           "devices"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "write",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.list_approvals",
       "title": "Waiting for your yes",
       "description": "Things an agent asked to do that need your yes first.",
-      "scope": "read",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {},
@@ -2170,15 +2256,16 @@
           "approvals"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "read",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.decide_approval",
       "title": "Approve or decline",
       "description": "Say yes or no to something an agent asked to do. Yes runs it as you.",
-      "scope": "write",
-      "confirm": "none",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -2210,15 +2297,16 @@
           "status"
         ],
         "additionalProperties": true
-      }
-    },
-    {
-      "name": "chat.export",
-      "title": "Export everything",
-      "description": "Export every channel, message, reaction, file and person as a zip in the Slack export layout (plus a lossless wos/ folder). Returns a download link.",
-      "scope": "admin",
+      },
+      "scope": "write",
       "confirm": "none",
       "emits": [],
+      "test": "test/tools.test.mjs"
+    },
+    {
+      "name": "chat.export_data",
+      "title": "Export everything",
+      "description": "Export every channel, message, reaction, file and person as a zip in the Slack export layout (plus a lossless wos/ folder). Returns a download link.",
       "input": {
         "type": "object",
         "properties": {},
@@ -2266,15 +2354,16 @@
           "counts"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "admin",
+      "confirm": "none",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     },
     {
       "name": "chat.import_slack",
       "title": "Import from Slack",
       "description": "Preview a Slack export zip (uploaded with chat.upload_file): who and what it holds, and what Slack left out. Bringing it in lands in v1; for now this previews only.",
-      "scope": "admin",
-      "confirm": "human",
-      "emits": [],
       "input": {
         "type": "object",
         "properties": {
@@ -2321,7 +2410,11 @@
           "committed"
         ],
         "additionalProperties": false
-      }
+      },
+      "scope": "admin",
+      "confirm": "human",
+      "emits": [],
+      "test": "test/tools.test.mjs"
     }
   ]
 }

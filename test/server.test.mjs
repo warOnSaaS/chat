@@ -50,12 +50,12 @@ test('pages need sign-in; the sign-in page offers GitHub and an email link', asy
 });
 
 test('REST tools: the same handlers as MCP, with a browser origin check', async () => {
-  const r = await tool('chat.post', { channel: 'general', body: 'from rest' }, cookie(t.sam));
+  const r = await tool('chat.post_message', { channel: 'general', body: 'from rest' }, cookie(t.sam));
   assert.equal(r.ok, true);
   assert.equal(r.result.body, 'from rest');
-  const bad = await tool('chat.post', { channel: 'general', body: 'x' }, { ...cookie(t.sam), origin: 'https://evil.example' });
+  const bad = await tool('chat.post_message', { channel: 'general', body: 'x' }, { ...cookie(t.sam), origin: 'https://evil.example' });
   assert.equal(bad.status, 403);
-  const err = await tool('chat.read', { channel: 'nope' }, cookie(t.sam));
+  const err = await tool('chat.read_messages', { channel: 'nope' }, cookie(t.sam));
   assert.equal(err.status, 404);
   assert.match(err.error, /No channel/);
   const none = await tool('chat.fly', {}, cookie(t.sam));
@@ -67,18 +67,18 @@ test('MCP: every tool is listed, with dotted names or underscores for strict cli
   const names = (await c.listTools()).tools.map((x) => x.name);
   const catalogue = (await fetch(`${base}/tools.json`).then((r) => r.json())).tools.map((x) => x.name);
   assert.deepEqual(names.sort(), catalogue.sort());
-  const out = await c.callTool({ name: 'chat.post', arguments: { channel: 'general', body: 'from claude' } });
+  const out = await c.callTool({ name: 'chat.post_message', arguments: { channel: 'general', body: 'from claude' } });
   assert.match(out.content[0].text, /Posted m_/);
-  const read = await c.callTool({ name: 'chat.read', arguments: { channel: 'general' } });
+  const read = await c.callTool({ name: 'chat.read_messages', arguments: { channel: 'general' } });
   assert.match(read.content[0].text, /from claude \(m_/);
   await c.close();
   const u = await mcp(t.sam, { query: '?names=underscore' });
-  assert.ok((await u.listTools()).tools.some((x) => x.name === 'chat_post'));
+  assert.ok((await u.listTools()).tools.some((x) => x.name === 'chat_post_message'));
   await u.close();
   // A read-only connection only sees read tools.
   const ro = await mcp(t.jordan, { scopes: ['read'] });
   const roNames = (await ro.listTools()).tools.map((x) => x.name);
-  assert.ok(roNames.includes('chat.read') && !roNames.includes('chat.post'));
+  assert.ok(roNames.includes('chat.read_messages') && !roNames.includes('chat.post_message'));
   await ro.close();
   const r = await fetch(`${base}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   assert.equal(r.status, 401);
@@ -101,7 +101,7 @@ test('MCP OAuth: register, authorize as the signed-in person, exchange with PKCE
   assert.equal(tok.scope, 'read write');
   const r = await tool('chat.list_people', {}, { authorization: `Bearer ${tok.access_token}` });
   assert.equal(r.result.me.handle, 'casey');
-  const del = await tool('chat.delete', { message: 'm_x' }, { authorization: `Bearer ${tok.access_token}` });
+  const del = await tool('chat.delete_message', { message: 'm_x' }, { authorization: `Bearer ${tok.access_token}` });
   assert.match(del.error, /may not delete/);
   const wrong = await fetch(meta.token_endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ grant_type: 'authorization_code', code: to.searchParams.get('code'), client_id: reg.client_id, code_verifier: 'nope' }) });
   assert.equal(wrong.status, 400);
@@ -112,11 +112,11 @@ test('live: a socket hears what it may see, and nothing from channels it is not 
   const ws = new WebSocket(`${base.replace('http', 'ws')}/ws`, { headers: cookie(t.casey) });
   const got = [];
   await new Promise((r, j) => { ws.on('message', (m) => { const e = JSON.parse(m); got.push(e); if (e.type === 'hello') r(); }); ws.on('error', j); });
-  await t.run(t.sam, 'chat.post', { channel: priv.id, body: 'secret' });
-  await t.run(t.sam, 'chat.post', { channel: 'general', body: 'live hello' });
+  await t.run(t.sam, 'chat.post_message', { channel: priv.id, body: 'secret' });
+  await t.run(t.sam, 'chat.post_message', { channel: 'general', body: 'live hello' });
   await new Promise((r) => setTimeout(r, 150));
   ws.close();
-  assert.ok(got.some((e) => e.type === 'message.posted' && e.data.message.body === 'live hello' && e.id > 0));
+  assert.ok(got.some((e) => e.type === 'chat.message.posted' && e.data.message.body === 'live hello' && e.id > 0));
   assert.ok(!got.some((e) => JSON.stringify(e).includes('secret')));
   assert.ok(!got.some((e) => 'audience' in e), 'audience lists never leave the server');
   const anon = new WebSocket(`${base.replace('http', 'ws')}/ws`);
@@ -128,7 +128,7 @@ test('files: upload streams to /files, download checks who may read', async () =
   const up = await fetch(`${base}/files?name=${encodeURIComponent('hello world.txt')}`, { method: 'POST', headers: { ...cookie(t.sam), 'content-type': 'text/plain' }, body: 'hello' }).then((r) => r.json());
   assert.equal(up.result.name, 'hello world.txt');
   const priv = await t.run(t.sam, 'chat.create_channel', { name: 'files-private', private: true });
-  await t.run(t.sam, 'chat.post', { channel: priv.id, body: 'file', files: [up.result.id] });
+  await t.run(t.sam, 'chat.post_message', { channel: priv.id, body: 'file', files: [up.result.id] });
   const mine = await fetch(`${base}${up.result.url}`, { headers: cookie(t.sam) });
   assert.equal(await mine.text(), 'hello');
   assert.equal(mine.headers.get('x-content-type-options'), 'nosniff');

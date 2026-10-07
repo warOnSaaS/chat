@@ -26,15 +26,15 @@ test('two server copies share live updates through Postgres LISTEN/NOTIFY', { sk
   const got = [];
   await new Promise((r) => ws.on('message', (m) => { const e = JSON.parse(m); got.push(e); if (e.type === 'hello') r(); }));
   // Post through copy B, as Sam.
-  const r = await fetch(`http://localhost:${sb.address().port}/api/tools/chat.post`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: `chat_session=${encodeURIComponent(issueTokens(a.sam).access_token)}` }, body: JSON.stringify({ channel: 'general', body: 'across copies @jordan' }) }).then((x) => x.json());
+  const r = await fetch(`http://localhost:${sb.address().port}/api/tools/chat.post_message`, { method: 'POST', headers: { 'content-type': 'application/json', cookie: `chat_session=${encodeURIComponent(issueTokens(a.sam).access_token)}` }, body: JSON.stringify({ channel: 'general', body: 'across copies @jordan' }) }).then((x) => x.json());
   assert.equal(r.ok, true);
-  for (let i = 0; i < 40 && !got.some((e) => e.type === 'message.posted'); i++) await new Promise((res) => setTimeout(res, 50));
+  for (let i = 0; i < 40 && !got.some((e) => e.type === 'chat.message.posted'); i++) await new Promise((res) => setTimeout(res, 50));
   ws.close();
-  const ev = got.find((e) => e.type === 'message.posted');
+  const ev = got.find((e) => e.type === 'chat.message.posted');
   assert.ok(ev, 'copy A heard the message posted on copy B');
   assert.equal(ev.data.message.body, 'across copies @jordan');
   // Search uses Postgres full text.
-  const s = await a.run(a.jordan, 'chat.search', { q: 'copies' });
+  const s = await a.run(a.jordan, 'chat.search_messages', { q: 'copies' });
   assert.equal(s.results.length, 1);
   for (const s2 of [sa, sb]) { s2.closeAllConnections?.(); s2.close(); }
   await appB.close();

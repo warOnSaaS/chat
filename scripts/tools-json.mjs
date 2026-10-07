@@ -2,12 +2,13 @@
 import fs from 'node:fs';
 import { catalogue } from '../server.mjs';
 
+// Format: warOnSaaS/suite packages/tools (tools.schema.json). Every tool is served at POST /api/tools/<name>
+// and over MCP at /mcp; the screens call the same tools.
 const doc = {
+  $schema: 'https://raw.githubusercontent.com/warOnSaaS/suite/main/packages/tools/tools.schema.json',
   app: 'chat',
-  version: JSON.parse(fs.readFileSync('package.json', 'utf8')).version,
-  format: 'wos-tools/1',
-  note: 'Every tool is served at POST /api/tools/<name> and over MCP at /mcp. Screens call the same tools.',
-  tools: catalogue(),
+  version: 1,
+  tools: catalogue().map((t) => ({ ...t, test: 'test/tools.test.mjs' })),
 };
 const text = `${JSON.stringify(doc, null, 2)}\n`;
 if (process.argv.includes('--check')) {

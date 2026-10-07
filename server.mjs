@@ -82,7 +82,7 @@ function attachLive(app, wss) {
     for (const c of app.live) {
       if (c.me.team_id !== e.team || !canSee(e, c.me.id) || c.ws.readyState !== 1) continue;
       // Someone who left or was removed stops hearing at once.
-      if (e.type === 'person.removed' && e.data.person?.id === c.me.id) { c.ws.close(4001, 'removed'); continue; }
+      if (e.type === 'chat.person.removed' && e.data.person?.id === c.me.id) { c.ws.close(4001, 'removed'); continue; }
       const { audience, team, ...out } = e;
       c.ws.send(JSON.stringify(out));
     }
@@ -135,7 +135,7 @@ async function route(app, req, res) {
 const redirect = (res, to) => res.writeHead(302, { location: to, 'cache-control': 'no-store' }).end();
 
 export function catalogue() {
-  return listTools().map((t) => ({ name: t.name, title: t.title, description: t.description, scope: t.scope, confirm: t.confirm, emits: t.emits, input: t.inputJson, output: t.outputJson }));
+  return listTools().map((t) => ({ name: t.name, title: t.title, description: t.description, input: t.inputJson, output: t.outputJson, scope: t.scope, confirm: t.confirm, emits: t.emits, ...(t.hidden ? { hidden: true } : {}) }));
 }
 
 async function handleTool(app, req, res, name) {
@@ -153,7 +153,7 @@ async function handleMcp(app, req, res, host, url) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Use POST (this is an MCP endpoint)' }, { allow: 'POST' });
   const who = await identify(app, { headers: { authorization: req.headers.authorization } });
   if (!who) return json(res, 401, { error: 'Sign in to use this chat.' }, { 'www-authenticate': challenge(host) });
-  // Tool names have a dot (chat.post), as the suite catalogue does. Clients that only allow letters, digits,
+  // Tool names have a dot (chat.post_message), as the suite catalogue does. Clients that only allow letters, digits,
   // _ and - can connect to /mcp?names=underscore and get chat_post instead.
   const underscore = url.searchParams.get('names') === 'underscore';
   const server = new McpServer({ name: 'wos-chat', version: VERSION }, { instructions: INSTRUCTIONS });
@@ -178,8 +178,8 @@ async function handleMcp(app, req, res, host, url) {
 }
 
 const INSTRUCTIONS = `This is wOS Chat, a team's chat: channels, direct messages and threads.
-Be brief. Use chat.list_channels to see where things are, chat.read to read a channel or a thread, chat.search to find something.
-Post with chat.post; answer inside a thread with chat.reply. Mention people with @handle (chat.list_people has the handles).
+Be brief. Use chat.list_channels to see where things are, chat.read_messages to read a channel or a thread, chat.search_messages to find something.
+Post with chat.post_message; answer inside a thread with chat.post_reply. Mention people with @handle (chat.list_people has the handles).
 Never post on someone's behalf without being asked. Never invent messages.`;
 
 async function handleUpload(app, req, res, url) {

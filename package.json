@@ -21,12 +21,12 @@
   "scripts": {
     "start": "node server.mjs",
     "dev": "CHAT_DEMO=1 node server.mjs",
-    "test": "node --test test/*.test.mjs",
+    "test": "node --test --test-timeout=120000 --test-concurrency=1 test/*.test.mjs",
     "tools:json": "node scripts/tools-json.mjs",
     "sync-kit": "node scripts/sync-kit.mjs",
     "shots": "node scripts/shots.mjs",
     "check:clean": "node scripts/check-clean.mjs",
-    "check": "node scripts/tools-json.mjs --check && node --test test/*.test.mjs && node scripts/check-clean.mjs"
+    "check": "node scripts/tools-json.mjs --check && node --test --test-timeout=120000 --test-concurrency=1 test/*.test.mjs && node scripts/check-clean.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

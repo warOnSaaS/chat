@@ -218,10 +218,10 @@ const go = (hash, replace = false) => { if (replace) { history.replaceState(null
 async function loadConvo(id, { focus } = {}) {
   let cv = S.convos.get(id);
   if (focus) {
-    const [older, newer] = await Promise.all([call('chat.read', { channel: id, before: `${focus}~`, limit: 25 }), call('chat.read', { channel: id, after: focus, limit: 30 })]);
+    const [older, newer] = await Promise.all([call('chat.read_messages', { channel: id, before: `${focus}~`, limit: 25 }), call('chat.read_messages', { channel: id, after: focus, limit: 30 })]);
     cv = { ...(cv ?? {}), channel: older.channel, messages: [...older.messages, ...newer.messages], more_before: older.more_before, last_read_id: older.last_read_id, at_latest: newer.messages.length < 30 };
   } else if (!cv || !cv.at_latest) {
-    const r = await call('chat.read', { channel: id, limit: 50 });
+    const r = await call('chat.read_messages', { channel: id, limit: 50 });
     cv = { ...(cv ?? {}), channel: r.channel, messages: r.messages, more_before: r.more_before, last_read_id: r.last_read_id, at_latest: true };
   }
   if (!cv.info || cv.infoStale) { cv.info = await call('chat.get_channel', { channel: id }); cv.infoStale = false; }
@@ -275,10 +275,10 @@ const notifyLabel = (n) => ({ all: 'every message', mentions: 'mentions only', n
 
 function composerHtml(info, root) {
   if (info.archived) return '<p class="archived-note">This channel is archived. You can read it, but not post.</p>';
-  if (!info.member && !isDm(info)) return `<p class="archived-note">You are reading #${esc(info.name)}. <button type="button" class="ui-btn is-accent is-sm" data-tool="chat.join" data-channel="${esc(info.id)}">Join channel</button></p>`;
+  if (!info.member && !isDm(info)) return `<p class="archived-note">You are reading #${esc(info.name)}. <button type="button" class="ui-btn is-accent is-sm" data-tool="chat.join_channel" data-channel="${esc(info.id)}">Join channel</button></p>`;
   const where = root ? 'Reply' : isDm(info) ? `Message ${esc(info.name)}` : `Message #${esc(info.name)}`;
   const pend = root ? S.threadPending : S.pending;
-  return `<form class="composer" id="${root ? 'thread-composer' : 'composer'}" data-tool="${root ? 'chat.reply' : 'chat.post'}" data-channel="${esc(info.id)}" ${root ? `data-message="${esc(root)}"` : ''} autocomplete="off">
+  return `<form class="composer" id="${root ? 'thread-composer' : 'composer'}" data-tool="${root ? 'chat.post_reply' : 'chat.post_message'}" data-channel="${esc(info.id)}" ${root ? `data-message="${esc(root)}"` : ''} autocomplete="off">
     <div class="pending-files">${pend.map((f) => `<span class="file-chip">${ic('file', 14)}${esc(f.name)} <small>${size(f.size)}</small><button type="button" class="ui-btn is-ghost is-icon is-sm" data-unpend="${esc(f.id)}" data-close aria-label="Remove file">${ic('x', 13)}</button></span>`).join('')}</div>
     <label class="sr" for="${root ? 'tc' : 'mc'}">${where}</label>
     <textarea id="${root ? 'tc' : 'mc'}" name="body" rows="1" placeholder="${where}" enterkeyhint="send"></textarea>
@@ -297,7 +297,7 @@ function messageHtml(m, { prev, inThread = false, focus = null } = {}) {
   const mentionMe = !m.mine && (m.html.includes(`data-handle="${me.handle}"`) || /data-handle="(channel|here|everyone)"/.test(m.html));
   const html = m.html.replaceAll(`class="mention" data-handle="${me.handle}"`, `class="mention is-me" data-handle="${me.handle}"`);
   const files = m.files.map((f) => (/^image\//.test(f.type) ? `<a href="${esc(f.url)}" target="_blank" rel="noopener"><img src="${esc(f.url)}" alt="${esc(f.name)}" loading="lazy"></a>` : `<a class="file-chip" href="${esc(f.url)}" download>${ic('file', 15)}<span>${esc(f.name)}</span><small>${size(f.size)}</small></a>`)).join('');
-  const rxs = m.reactions.map((r) => `<button type="button" class="rx${r.mine ? ' is-mine' : ''}" data-tool="chat.react" data-message="${esc(m.id)}" data-emoji="${esc(r.emoji)}" title="${esc(r.people.map((h) => `@${h}`).join(', '))}" aria-pressed="${r.mine}">${esc(r.emoji)} ${r.count}</button>`).join('');
+  const rxs = m.reactions.map((r) => `<button type="button" class="rx${r.mine ? ' is-mine' : ''}" data-tool="${r.mine ? 'chat.remove_reaction' : 'chat.add_reaction'}" data-message="${esc(m.id)}" data-emoji="${esc(r.emoji)}" title="${esc(r.people.map((h) => `@${h}`).join(', '))}" aria-pressed="${r.mine}">${esc(r.emoji)} ${r.count}</button>`).join('');
   const label = m.author.kind === 'agent' ? `<span class="ui-chip is-outline">${m.author.example ? 'Example agent' : 'Agent'}</span>` : '';
   return `<article class="msg${cont ? ' is-cont' : ''}${m.author.kind === 'agent' ? ' is-agent' : ''}${mentionMe ? ' is-mention' : ''}${focus === m.id ? ' is-hit' : ''}" id="m-${esc(m.id)}" data-id="${esc(m.id)}" data-channel="${esc(m.channel)}" tabindex="-1">
     ${avatar(m.author)}
@@ -306,11 +306,11 @@ function messageHtml(m, { prev, inThread = false, focus = null } = {}) {
       ${m.deleted ? '<div class="msg-text msg-gone">This message was deleted.</div>' : `<div class="msg-text">${html}</div>`}
       ${files ? `<div class="msg-files">${files}</div>` : ''}
       ${rxs || (!m.deleted && m.reactions.length) ? `<div class="rxs">${rxs}<button type="button" class="rx rx-add" data-open="emoji" data-message="${esc(m.id)}" aria-label="Add a reaction">${ic('smile', 14)}</button></div>` : ''}
-      ${!inThread && m.reply_count ? `<button type="button" class="msg-thread" data-tool="chat.read" data-thread="${esc(m.id)}" data-channel="${esc(m.channel)}"><b>${m.reply_count} ${m.reply_count === 1 ? 'reply' : 'replies'}</b><span>Last reply ${ago(m.last_reply_at ?? m.created_at)}</span></button>` : ''}
+      ${!inThread && m.reply_count ? `<button type="button" class="msg-thread" data-tool="chat.read_messages" data-thread="${esc(m.id)}" data-channel="${esc(m.channel)}"><b>${m.reply_count} ${m.reply_count === 1 ? 'reply' : 'replies'}</b><span>Last reply ${ago(m.last_reply_at ?? m.created_at)}</span></button>` : ''}
     </div>
     ${m.deleted ? '' : `<div class="msg-acts" role="toolbar" aria-label="Message actions">
       <button type="button" class="ui-btn is-ghost is-sm" data-open="emoji" data-message="${esc(m.id)}" aria-label="Add a reaction" title="React">${ic('smile')}</button>
-      ${inThread ? '' : `<button type="button" class="ui-btn is-ghost is-sm" data-tool="chat.read" data-thread="${esc(m.id)}" data-channel="${esc(m.channel)}" aria-label="Reply in thread" title="Reply in thread">${ic('reply')}</button>`}
+      ${inThread ? '' : `<button type="button" class="ui-btn is-ghost is-sm" data-tool="chat.read_messages" data-thread="${esc(m.id)}" data-channel="${esc(m.channel)}" aria-label="Reply in thread" title="Reply in thread">${ic('reply')}</button>`}
       <button type="button" class="ui-btn is-ghost is-sm" data-open="msg-menu" data-message="${esc(m.id)}" aria-label="More actions" title="More">${ic('more')}</button>
     </div>`}
   </article>`;
@@ -323,7 +323,7 @@ function renderStream(focus = null) {
   const info = cv.info;
   const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
   let out = '';
-  if (cv.more_before) out += `<div class="older"><button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.read" data-before="${esc(cv.messages[0]?.id ?? '')}" data-channel="${esc(info.id)}">Show older messages</button></div>`;
+  if (cv.more_before) out += `<div class="older"><button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.read_messages" data-before="${esc(cv.messages[0]?.id ?? '')}" data-channel="${esc(info.id)}">Show older messages</button></div>`;
   else out += `<div class="stream-start"><h2>${isDm(info) ? esc(info.name) : `${info.kind === 'private' ? '' : '#'}${esc(info.name)}`}</h2><p>${isDm(info) ? 'This is the start of your direct message.' : `This is the very beginning of ${info.kind === 'private' ? 'the private channel' : ''} #${esc(info.name)}.${info.topic ? ` ${esc(info.topic)}.` : ''}`}</p></div>`;
   let prev = null, lastDay = '', newDone = false;
   for (const m of cv.messages) {
@@ -333,7 +333,7 @@ function renderStream(focus = null) {
     out += messageHtml(m, { prev, focus });
     prev = m;
   }
-  if (!cv.at_latest) out += `<div class="older"><button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.read" data-latest data-channel="${esc(info.id)}">Jump to the latest</button></div>`;
+  if (!cv.at_latest) out += `<div class="older"><button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.read_messages" data-latest data-channel="${esc(info.id)}">Jump to the latest</button></div>`;
   el.innerHTML = out;
   if (focus) $(`#m-${CSS.escape(focus)}`)?.scrollIntoView({ block: 'center' });
   else if (newDone && !renderStream.done?.has(S.current)) { $('#new-line').scrollIntoView({ block: 'center' }); (renderStream.done ??= new Set()).add(S.current); }
@@ -341,7 +341,7 @@ function renderStream(focus = null) {
 }
 
 async function showThread(channel, rootId) {
-  const r = await call('chat.read', { thread: rootId });
+  const r = await call('chat.read_messages', { thread: rootId });
   S.thread = { channel, root: r.thread, messages: r.messages };
   const cv = S.convos.get(channel);
   const pane = $('#thread');
@@ -408,7 +408,7 @@ async function showSearch(r) {
   topbar({ title: 'Search' });
   const q = r.q?.q ?? '';
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>Search</h1><p>Every channel you can see. Try in:#marketing or from:@jordan.</p></div></div>
-    <form class="search-form" data-tool="chat.search" role="search"><label class="ui-search">${ic('search', 15)}<input name="q" value="${esc(q)}" placeholder="Search messages" aria-label="Search messages" enterkeyhint="search"></label><button class="ui-btn is-accent" type="submit">Search</button></form>
+    <form class="search-form" data-tool="chat.search_messages" role="search"><label class="ui-search">${ic('search', 15)}<input name="q" value="${esc(q)}" placeholder="Search messages" aria-label="Search messages" enterkeyhint="search"></label><button class="ui-btn is-accent" type="submit">Search</button></form>
     <div id="results"></div></div></div>`;
   if (!coarse()) $('.search-form input').focus();
   if (q) await runSearch(q);
@@ -418,7 +418,7 @@ async function runSearch(q) {
   const box = $('#results');
   box.innerHTML = '<p class="mute">Searching</p>';
   try {
-    const r = await call('chat.search', { q });
+    const r = await call('chat.search_messages', { q });
     box.innerHTML = r.results.length ? `<ul class="list">${r.results.map((m) => `<li><a class="hit" href="#/c/${esc(m.channel)}${m.thread_root ? `/t/${esc(m.thread_root)}` : `/m/${esc(m.id)}`}"><div class="msg"><span class="where">${esc(m.channel_name && !m.channel.startsWith('d_') ? `#${m.channel_name}` : m.channel_name)}${m.thread_root ? ' · in a thread' : ''} · ${esc(dayLabel(m.created_at))}</span>${messageInner(m)}</div></a></li>`).join('')}</ul>` : `<p class="empty-note">Nothing matches "${esc(q)}".</p>`;
   } catch (e) { box.innerHTML = `<p class="empty-note">${esc(e.message)}</p>`; }
 }
@@ -442,7 +442,7 @@ async function showBrowse() {
   topbar({ title: 'All channels' });
   S.browse = (await call('chat.list_channels', { browse: true, include_archived: true })).channels.filter((c) => !isDm(c));
   $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>All channels</h1><p>Public channels anyone on the team can join, and private ones you are in.</p></div><button type="button" class="ui-btn is-accent" data-open="new-channel">${ic('plus', 15)} Create a channel</button></div>
-    <ul class="list">${S.browse.map((c) => `<li class="row"><span class="hash">${c.kind === 'private' ? ic('lock', 14) : '#'}</span><div class="grow"><a href="#/c/${esc(c.id)}"><b>${esc(c.name)}</b></a>${c.archived ? ' <span class="ui-chip is-outline">Archived</span>' : ''}<small>${c.member_count} ${c.member_count === 1 ? 'member' : 'members'}${c.topic ? ` · ${esc(c.topic)}` : ''}</small></div>${c.member ? '<span class="ui-chip is-soft">Joined</span>' : c.archived ? '' : `<button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.join" data-channel="${esc(c.id)}">Join</button>`}</li>`).join('')}</ul></div></div>`;
+    <ul class="list">${S.browse.map((c) => `<li class="row"><span class="hash">${c.kind === 'private' ? ic('lock', 14) : '#'}</span><div class="grow"><a href="#/c/${esc(c.id)}"><b>${esc(c.name)}</b></a>${c.archived ? ' <span class="ui-chip is-outline">Archived</span>' : ''}<small>${c.member_count} ${c.member_count === 1 ? 'member' : 'members'}${c.topic ? ` · ${esc(c.topic)}` : ''}</small></div>${c.member ? '<span class="ui-chip is-soft">Joined</span>' : c.archived ? '' : `<button type="button" class="ui-btn is-quiet is-sm" data-tool="chat.join_channel" data-channel="${esc(c.id)}">Join</button>`}</li>`).join('')}</ul></div></div>`;
 }
 
 async function showSettings() {
@@ -467,7 +467,7 @@ async function showSettings() {
       <div class="codebox"><code>${esc(host)}/mcp</code><button type="button" class="ui-btn is-ghost is-sm" data-copy="${esc(host)}/mcp">Copy</button></div>
       <p class="mute" style="margin-top:8px;font-size:12.5px">Apps that do not allow dots in tool names can use ${esc(host)}/mcp?names=underscore. The full tool list is at <a href="/tools.json">/tools.json</a>.</p></section>
     <section class="sect"><h2>Your data</h2><p>Download everything: every channel, message, reaction, file and person, in the same layout as a Slack export, so you can move again any time.</p>
-      ${admin ? '<button type="button" class="ui-btn is-quiet" data-tool="chat.export">Export everything</button> <span id="export-out"></span>' : '<p class="mute">Team owners and admins can export.</p>'}
+      ${admin ? '<button type="button" class="ui-btn is-quiet" data-tool="chat.export_data">Export everything</button> <span id="export-out"></span>' : '<p class="mute">Team owners and admins can export.</p>'}
       ${admin ? `<form class="inline-form" data-tool="chat.import_slack" style="margin-top:16px"><label class="ui-field"><span>Coming from Slack? <small>Check what your Slack export holds. Bringing it in arrives in the next version.</small></span><input class="ui-input" type="file" name="file" accept=".zip,application/zip" required></label><button class="ui-btn is-quiet" type="submit">Check the export</button></form><div id="import-out"></div>` : ''}</section>
     <section class="sect"><h2>Where this runs</h2><div class="two">
       <div class="ui-card"><h3>Host it yourself, free</h3><p>One Docker command and any Postgres, or SQLite on one computer. No licence key, no limits. Files on disk or any S3 store. Your data never leaves you.</p></div>
@@ -516,7 +516,7 @@ function findMessage(id) {
 
 const OPEN = {
   emoji(el) {
-    pop(el, `<div class="emojis">${EMOJI.map((e) => `<button type="button" role="menuitem" data-tool="chat.react" data-message="${esc(el.dataset.message)}" data-emoji="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>`, { label: 'Reactions' });
+    pop(el, `<div class="emojis">${EMOJI.map((e) => `<button type="button" role="menuitem" data-tool="chat.add_reaction" data-message="${esc(el.dataset.message)}" data-emoji="${e}" aria-label="React ${e}">${e}</button>`).join('')}</div>`, { label: 'Reactions' });
   },
   'emoji-insert'(el) {
     const form = el.closest('form');
@@ -527,10 +527,10 @@ const OPEN = {
     if (!m) return;
     el.closest('.msg')?.classList.add('is-active');
     const admin = ['owner', 'admin'].includes(S.settings.me.role);
-    pop(el, `${m.mine ? `<button type="button" role="menuitem" data-tool="chat.edit" data-message="${esc(m.id)}">Edit message</button>` : ''}
+    pop(el, `${m.mine ? `<button type="button" role="menuitem" data-tool="chat.edit_message" data-message="${esc(m.id)}">Edit message</button>` : ''}
       ${m.thread_root ? '' : `<button type="button" role="menuitem" data-tool="chat.mark_unread" data-message="${esc(m.id)}">Mark unread from here</button>`}
       <button type="button" role="menuitem" data-copy="${esc(`${location.origin}/#/c/${m.channel}${m.thread_root ? `/t/${m.thread_root}` : `/m/${m.id}`}`)}">Copy link</button>
-      ${m.mine || admin ? `<hr><button type="button" role="menuitem" class="is-danger" data-tool="chat.delete" data-message="${esc(m.id)}">Delete message</button>` : ''}`);
+      ${m.mine || admin ? `<hr><button type="button" role="menuitem" class="is-danger" data-tool="chat.delete_message" data-message="${esc(m.id)}">Delete message</button>` : ''}`);
   },
   'notify-menu'(el) {
     const info = S.convos.get(el.dataset.channel)?.info;
@@ -547,7 +547,7 @@ const OPEN = {
       ${info.member ? `<button type="button" role="menuitem" data-open="notify-menu" data-channel="${esc(info.id)}">Notifications: ${esc(notifyLabel(info.notify))}</button>` : ''}
       ${!isDm(info) && info.member && !info.archived ? `<button type="button" role="menuitem" data-open="topic" data-channel="${esc(info.id)}">Edit topic</button>` : ''}
       ${info.member ? `<button type="button" role="menuitem" data-tool="chat.mark_read" data-channel="${esc(info.id)}">Mark as read</button>` : ''}
-      ${!isDm(info) && info.member ? `<hr><button type="button" role="menuitem" data-tool="chat.leave" data-channel="${esc(info.id)}">Leave channel</button>` : ''}
+      ${!isDm(info) && info.member ? `<hr><button type="button" role="menuitem" data-tool="chat.leave_channel" data-channel="${esc(info.id)}">Leave channel</button>` : ''}
       ${!isDm(info) && admin && info.name !== 'general' ? `<button type="button" role="menuitem" class="${info.archived ? '' : 'is-danger'}" data-tool="chat.archive_channel" data-channel="${esc(info.id)}" data-archived="${!info.archived}">${info.archived ? 'Bring back from archive' : 'Archive channel'}</button>` : ''}`);
   },
   'new-channel'() {
@@ -567,7 +567,7 @@ const OPEN = {
     if (!info) return;
     const outside = S.people.filter((p) => !info.members.some((m) => m.id === p.id));
     dialog('members', `People in ${esc(chanLabel(info))}`, `<div class="ui-dialog-b"><ul class="list">${info.members.map((m) => `<li class="row">${avatar(m, 'is-sm')}<div class="grow"><b>${esc(m.name)}</b> <span class="mute">@${esc(m.handle)}</span>${m.kind === 'agent' ? ' <span class="ui-chip is-outline">Agent</span>' : ''}</div>${m.id !== S.me.id ? `<button type="button" class="ui-btn is-ghost is-sm" data-tool="chat.open_dm" data-people="${esc(m.handle)}">Message</button>` : '<span class="mute">You</span>'}</li>`).join('')}</ul>
-      ${info.kind !== 'dm' && info.member && !info.archived && outside.length ? `<form data-tool="chat.invite" data-channel="${esc(info.id)}" class="inline-form" style="margin-top:14px"><label class="ui-field"><span>Add someone</span><select class="ui-select" name="people">${outside.map((p) => `<option value="${esc(p.handle)}">${esc(p.name)}${p.kind === 'agent' ? ' (agent)' : ''}</option>`).join('')}</select></label><button class="ui-btn is-quiet" type="submit">Add</button></form>` : ''}</div>
+      ${info.kind !== 'dm' && info.member && !info.archived && outside.length ? `<form data-tool="chat.invite_people" data-channel="${esc(info.id)}" class="inline-form" style="margin-top:14px"><label class="ui-field"><span>Add someone</span><select class="ui-select" name="people">${outside.map((p) => `<option value="${esc(p.handle)}">${esc(p.name)}${p.kind === 'agent' ? ' (agent)' : ''}</option>`).join('')}</select></label><button class="ui-btn is-quiet" type="submit">Add</button></form>` : ''}</div>
       <div class="ui-dialog-a"><button type="button" class="ui-btn is-ghost" data-close>Done</button></div>`);
   },
   topic(el) {
@@ -601,38 +601,44 @@ function confirmBox(title, text, yes = 'Delete') {
 // ---------- actions: each one calls the tool it names ----------
 
 const ACT = {
-  async 'chat.react'(el) {
+  async 'chat.add_reaction'(el) {
     const m = findMessage(el.dataset.message);
     const mine = m?.reactions.find((r) => r.emoji === el.dataset.emoji)?.mine;
     closePops();
-    const r = await call('chat.react', { message: el.dataset.message, emoji: el.dataset.emoji, remove: !!mine });
+    // Picking an emoji you already used takes it back, as in Slack.
+    const r = await call(mine ? 'chat.remove_reaction' : 'chat.add_reaction', { message: el.dataset.message, emoji: el.dataset.emoji });
     updateMessage(r.message, (x) => { x.reactions = r.reactions; });
   },
-  async 'chat.read'(el) {
+  async 'chat.remove_reaction'(el) {
+    closePops();
+    const r = await call('chat.remove_reaction', { message: el.dataset.message, emoji: el.dataset.emoji });
+    updateMessage(r.message, (x) => { x.reactions = r.reactions; });
+  },
+  async 'chat.read_messages'(el) {
     const id = el.dataset.channel;
     if (el.dataset.thread) return go(`#/c/${id}/t/${el.dataset.thread}`);
     const cv = S.convos.get(id);
     if (el.hasAttribute('data-latest')) { cv.at_latest = false; return go(`#/c/${id}`, true); }
-    const r = await call('chat.read', { channel: id, before: el.dataset.before, limit: 50 });
+    const r = await call('chat.read_messages', { channel: id, before: el.dataset.before, limit: 50 });
     const el2 = $('#stream'), h = el2.scrollHeight;
     cv.messages = [...r.messages, ...cv.messages];
     cv.more_before = r.more_before;
     renderStream();
     el2.scrollTop = el2.scrollHeight - h;
   },
-  'chat.edit'(el) {
+  'chat.edit_message'(el) {
     closePops();
     const m = findMessage(el.dataset.message);
     const box = $$(`#m-${CSS.escape(m.id)} .msg-text`).pop();
     if (!box) return;
-    box.outerHTML = `<form class="edit-form" data-tool="chat.edit" data-message="${esc(m.id)}"><textarea class="ui-textarea" name="body" rows="3" aria-label="Edit message">${esc(m.body)}</textarea><div class="row"><button type="button" class="ui-btn is-ghost is-sm" data-close data-rerender>Cancel</button><button class="ui-btn is-accent is-sm" type="submit">Save</button></div></form>`;
+    box.outerHTML = `<form class="edit-form" data-tool="chat.edit_message" data-message="${esc(m.id)}"><textarea class="ui-textarea" name="body" rows="3" aria-label="Edit message">${esc(m.body)}</textarea><div class="row"><button type="button" class="ui-btn is-ghost is-sm" data-close data-rerender>Cancel</button><button class="ui-btn is-accent is-sm" type="submit">Save</button></div></form>`;
     const ta = $(`#m-${CSS.escape(m.id)} .edit-form textarea`);
     ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
   },
-  async 'chat.delete'(el) {
+  async 'chat.delete_message'(el) {
     closePops();
     if (!(await confirmBox('Delete this message?', 'The words are wiped for everyone. This cannot be undone.'))) return;
-    await call('chat.delete', { message: el.dataset.message });
+    await call('chat.delete_message', { message: el.dataset.message });
   },
   async 'chat.mark_unread'(el) {
     closePops();
@@ -644,15 +650,15 @@ const ACT = {
     toast('Marked unread. It stays unread until you come back to it.');
   },
   async 'chat.mark_read'(el) { closePops(); applyRead(await call('chat.mark_read', { channel: el.dataset.channel })); },
-  async 'chat.join'(el) {
-    await call('chat.join', { channel: el.dataset.channel });
+  async 'chat.join_channel'(el) {
+    await call('chat.join_channel', { channel: el.dataset.channel });
     await refreshChannels(el.dataset.channel);
     go(`#/c/${el.dataset.channel}`);
     if (S.route.channel === el.dataset.channel) route();
   },
-  async 'chat.leave'(el) {
+  async 'chat.leave_channel'(el) {
     closePops();
-    await call('chat.leave', { channel: el.dataset.channel });
+    await call('chat.leave_channel', { channel: el.dataset.channel });
     await refreshChannels(el.dataset.channel);
     go('#/', true);
   },
@@ -691,10 +697,10 @@ const ACT = {
     toast('Notifications are off.');
     showSettings();
   },
-  async 'chat.export'() {
+  async 'chat.export_data'() {
     const out = $('#export-out');
     out.textContent = 'Packing it up';
-    const r = await call('chat.export', {});
+    const r = await call('chat.export_data', {});
     out.innerHTML = `<a class="ui-btn is-accent is-sm" href="${esc(r.file.url)}" download>Download ${esc(size(r.file.size))}</a> <span class="mute">${r.counts.messages} messages, ${r.counts.channels} conversations, ${r.counts.files} files</span>`;
   },
   async 'chat.decide_approval'(el) {
@@ -717,10 +723,10 @@ const ACT = {
 };
 
 const FORM = {
-  async 'chat.post'(form, data) { await send(form, data, null); },
-  async 'chat.reply'(form, data) { await send(form, data, form.dataset.message); },
-  async 'chat.edit'(form, data) {
-    const m = await call('chat.edit', { message: form.dataset.message, body: data.get('body') });
+  async 'chat.post_message'(form, data) { await send(form, data, null); },
+  async 'chat.post_reply'(form, data) { await send(form, data, form.dataset.message); },
+  async 'chat.edit_message'(form, data) {
+    const m = await call('chat.edit_message', { message: form.dataset.message, body: data.get('body') });
     updateMessage(m.id, (x) => Object.assign(x, m));
   },
   async 'chat.create_channel'(form, data) {
@@ -737,8 +743,8 @@ const FORM = {
     await refreshChannels(c.id);
     go(`#/c/${c.id}`);
   },
-  async 'chat.invite'(form, data) {
-    const r = await call('chat.invite', { channel: form.dataset.channel, people: data.getAll('people') });
+  async 'chat.invite_people'(form, data) {
+    const r = await call('chat.invite_people', { channel: form.dataset.channel, people: data.getAll('people') });
     form.closest('dialog')?.close();
     toast(r.added.length ? `Added ${r.added.map((h) => `@${h}`).join(', ')}.` : 'Already in the channel.');
   },
@@ -746,7 +752,7 @@ const FORM = {
     await call('chat.set_topic', { channel: form.dataset.channel, topic: data.get('topic') });
     form.closest('dialog')?.close();
   },
-  async 'chat.search'(form, data) {
+  async 'chat.search_messages'(form, data) {
     const q = String(data.get('q') ?? '').trim();
     history.replaceState(null, '', `#/search?q=${encodeURIComponent(q)}`);
     if (q) await runSearch(q);
@@ -793,7 +799,7 @@ async function send(form, data, root) {
   pend.length = 0;
   form.querySelector('.pending-files').innerHTML = '';
   try {
-    const m = root ? await call('chat.reply', { message: root, body, ...(files.length ? { files } : {}) }) : await call('chat.post', { channel: form.dataset.channel, body, ...(files.length ? { files } : {}) });
+    const m = root ? await call('chat.post_reply', { message: root, body, ...(files.length ? { files } : {}) }) : await call('chat.post_message', { channel: form.dataset.channel, body, ...(files.length ? { files } : {}) });
     addMessage({ ...m, mine: true });
   } catch (e) {
     ta.value = body;
@@ -840,7 +846,7 @@ function onEvent(e) {
   if (e.id) { if (S.seen.has(e.id)) return; S.seen.add(e.id); S.cursor = Math.max(S.cursor, e.id); }
   const d = e.data ?? {};
   switch (e.type) {
-    case 'message.posted': {
+    case 'chat.message.posted': {
       const m = { ...d.message, mine: d.message.author.id === S.me.id };
       addMessage(m);
       if (!m.thread_root && m.author.id !== S.me.id) {
@@ -856,37 +862,37 @@ function onEvent(e) {
       renderTyping();
       break;
     }
-    case 'thread.updated': updateMessage(d.message, (x) => { x.reply_count = d.reply_count; x.last_reply_at = d.last_reply_at; }); break;
-    case 'message.edited': updateMessage(d.message.id, (x) => Object.assign(x, { ...d.message, mine: x.mine })); break;
-    case 'message.deleted':
+    case 'chat.thread.updated': updateMessage(d.message, (x) => { x.reply_count = d.reply_count; x.last_reply_at = d.last_reply_at; }); break;
+    case 'chat.message.edited': updateMessage(d.message.id, (x) => Object.assign(x, { ...d.message, mine: x.mine })); break;
+    case 'chat.message.deleted':
       for (const cv of S.convos.values()) cv.messages = d.keep ? cv.messages.map((x) => (x.id === d.message ? { ...x, deleted: true, body: '', html: '', reactions: [], files: [] } : x)) : cv.messages.filter((x) => x.id !== d.message);
       if (S.thread) { if (S.thread.root === d.message && !d.keep) go(`#/c/${S.thread.channel}`, true); else S.thread.messages = S.thread.messages.filter((x) => x.id !== d.message || x.id === S.thread.root).map((x) => (x.id === d.message ? { ...x, deleted: true, body: '', html: '' } : x)); }
       if (d.thread_root) updateMessage(d.thread_root, (x) => { x.reply_count = Math.max(0, (x.reply_count ?? 1) - 1); });
       if (S.current) renderStream();
       if (S.thread) renderThread();
       break;
-    case 'reaction.changed': updateMessage(d.message, (x) => { x.reactions = d.reactions.map((r) => ({ ...r, mine: r.people.includes(S.me.handle) })); }); break;
-    case 'read.changed': applyRead(d); break;
-    case 'typing': case 'agent.thinking': {
+    case 'chat.reaction.changed': updateMessage(d.message, (x) => { x.reactions = d.reactions.map((r) => ({ ...r, mine: r.people.includes(S.me.handle) })); }); break;
+    case 'chat.read.changed': applyRead(d); break;
+    case 'chat.typing.started': case 'chat.agent.started': {
       const p = d.person ?? d.agent;
-      S.typing.set(`${p.id}:${e.channel}`, { id: p.id, name: p.name, channel: e.channel, thread: d.thread ?? null, agent: e.type === 'agent.thinking', until: Date.now() + (e.type === 'agent.thinking' ? 20000 : 5000) });
-      if (e.type === 'agent.thinking' && S.thread?.root !== d.thread) S.typing.get(`${p.id}:${e.channel}`).thread = null;
+      S.typing.set(`${p.id}:${e.channel}`, { id: p.id, name: p.name, channel: e.channel, thread: d.thread ?? null, agent: e.type === 'chat.agent.started', until: Date.now() + (e.type === 'agent.thinking' ? 20000 : 5000) });
+      if (e.type === 'chat.agent.started' && S.thread?.root !== d.thread) S.typing.get(`${p.id}:${e.channel}`).thread = null;
       renderTyping();
       break;
     }
-    case 'notify':
+    case 'chat.notification.sent':
       if (document.hidden && 'Notification' in window && Notification.permission === 'granted' && !S.settings.push.devices) navigator.serviceWorker?.ready.then((r) => r.showNotification(d.title, { body: d.body, tag: d.tag, data: { url: d.url } })).catch(() => {});
       break;
-    case 'approval.requested': S.approvals.push(d.approval); renderSide(); toast(`An app is asking you to approve: ${d.approval.title}. See Activity.`); break;
-    case 'channel.created': case 'channel.updated': case 'member.joined': case 'member.left': {
+    case 'chat.approval.requested': S.approvals.push(d.approval); renderSide(); toast(`An app is asking you to approve: ${d.approval.title}. See Activity.`); break;
+    case 'chat.channel.created': case 'chat.channel.updated': case 'chat.member.joined': case 'chat.member.left': {
       const cv = S.convos.get(e.channel);
       if (cv) cv.infoStale = true;
-      if (e.type === 'member.left' && d.person?.id === S.me.id && S.current === e.channel) { refreshChannels(); break; }
+      if (e.type === 'chat.member.left' && d.person?.id === S.me.id && S.current === e.channel) { refreshChannels(); break; }
       refreshSoon(e.channel);
-      if (S.current === e.channel && (e.type === 'channel.updated' || e.type === 'member.joined')) setTimeout(() => { if (S.current === e.channel && !document.activeElement?.closest('.composer')) route(); }, 400);
+      if (S.current === e.channel && (e.type === 'chat.channel.updated' || e.type === 'chat.member.joined')) setTimeout(() => { if (S.current === e.channel && !document.activeElement?.closest('.composer')) route(); }, 400);
       break;
     }
-    case 'person.added': case 'person.updated': case 'person.removed': refreshPeople(); break;
+    case 'chat.person.added': case 'chat.person.updated': case 'chat.person.removed': refreshPeople(); break;
     default:
   }
 }
@@ -1042,7 +1048,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowUp' && !ta.value) {
       const cv = S.convos.get(S.current);
       const mine = [...(ta.closest('#thread') ? S.thread?.messages ?? [] : cv?.messages ?? [])].reverse().find((m) => m.mine && !m.deleted);
-      if (mine) { e.preventDefault(); ACT['chat.edit']({ dataset: { message: mine.id } }); }
+      if (mine) { e.preventDefault(); ACT['chat.edit_message']({ dataset: { message: mine.id } }); }
     }
     return;
   }

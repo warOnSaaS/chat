@@ -117,7 +117,7 @@ test('every action on every screen has a tool, at desk and phone width', async (
     await open('.msg.is-active [data-open=msg-menu], .msg:hover [data-open=msg-menu]', 'own message menu');
     if (tag === 'desk') await mine.hover(); else await mine.locator('.msg-text').click();
     await page.locator('.msg.is-active [data-open=msg-menu], .msg:hover [data-open=msg-menu]').first().click();
-    await page.click('.pop [data-tool="chat.edit"]');
+    await page.click('.pop [data-tool="chat.edit_message"]');
     await check('inline edit');
     await page.keyboard.press('Escape');
     const root = await page.evaluate(() => [...window.chatState.convos.values()].flatMap((c) => c.messages).find((m) => m.reply_count)?.id);

@@ -1,16 +1,26 @@
 {
+  "$schema": "https://raw.githubusercontent.com/warOnSaaS/suite/main/packages/manifest/wos-app.schema.json",
   "id": "chat",
   "name": "Chat",
+  "description": "Channels, direct messages and threads for the team and its agents. Agents are members you can mention.",
   "version": "0.1.0",
-  "description": "Team chat: channels, direct messages, threads, and AI agents as members.",
-  "requires": { "core": ">=0.4" },
+  "license": "AGPL-3.0-only",
+  "requires": { "core": ">=0.1" },
   "tools": "./tools.json",
   "tables": "./migrations",
   "server": "./server.mjs",
-  "screens": "./public/app/chat.mjs",
-  "needs": { "services": [], "permissions": ["notifications"], "desktop": [] },
-  "data": { "onDisable": "keep", "exports": ["channels", "messages", "files"], "exportFormat": "slack-compatible zip (chat.export)" },
-  "events": ["message.posted", "message.edited", "message.deleted", "thread.updated", "reaction.changed", "read.changed", "channel.created", "channel.updated", "member.joined", "member.left", "person.added", "person.updated", "person.removed", "approval.requested", "typing", "agent.thinking", "notify"],
-  "routes": { "tools": "/api/tools/<name>", "mcp": "/mcp", "live": "/ws", "files": "/files", "health": "/health" },
-  "license": "AGPL-3.0-only"
+  "screens": "./screens.mjs",
+  "icon": "chat",
+  "nav": { "label": "Chat", "order": 30 },
+  "events": {
+    "emits": ["chat.message.posted", "chat.message.edited", "chat.message.deleted", "chat.thread.updated", "chat.reaction.changed", "chat.read.changed", "chat.channel.created", "chat.channel.updated", "chat.member.joined", "chat.member.left", "chat.person.added", "chat.person.updated", "chat.person.removed", "chat.approval.requested", "chat.typing.started", "chat.agent.started", "chat.notification.sent"],
+    "listens": []
+  },
+  "needs": {
+    "services": [],
+    "permissions": ["notifications"],
+    "desktop": [],
+    "env": ["CHAT_MODEL_URL", "CHAT_MODEL_KEY", "CHAT_MODEL", "CHAT_PUSH_CONTACT", "FILES_STORAGE", "FILES_DIR", "FILES_MAX_MB", "S3_BUCKET", "S3_ENDPOINT", "S3_REGION", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"]
+  },
+  "data": { "onDisable": "keep", "exports": ["channels", "messages", "reactions", "files", "people"] }
 }

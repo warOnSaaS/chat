@@ -39,11 +39,11 @@ test('every tool is fully described, and tools.json is current', () => {
     assert.ok(Array.isArray(x.emits), `${x.name} emits`);
     assert.ok(!/\u2014/.test(x.description), `${x.name}: no em dashes`);
   }
-  for (const n of ['chat.list_channels', 'chat.read', 'chat.post', 'chat.reply', 'chat.react', 'chat.search', 'chat.create_channel', 'chat.invite', 'chat.set_status', 'chat.edit', 'chat.delete', 'chat.mark_read', 'chat.set_notify']) assert.ok(names.has(n), `ROADMAP 5.3 names ${n}`);
+  for (const n of ['chat.list_channels', 'chat.read_messages', 'chat.post_message', 'chat.post_reply', 'chat.add_reaction', 'chat.search_messages', 'chat.create_channel', 'chat.invite_people', 'chat.set_status', 'chat.edit_message', 'chat.delete_message', 'chat.mark_read', 'chat.set_notify']) assert.ok(names.has(n), `ROADMAP 5.3 names ${n}`);
   const file = JSON.parse(fs.readFileSync(new URL('../tools.json', import.meta.url)));
-  assert.deepEqual(file.tools, JSON.parse(JSON.stringify(tools)), 'tools.json is stale: npm run tools:json');
+  assert.deepEqual(file.tools.map(({ test, ...x }) => x), JSON.parse(JSON.stringify(tools)), 'tools.json is stale: npm run tools:json');
   const manifest = JSON.parse(fs.readFileSync(new URL('../wos-app.json', import.meta.url)));
-  for (const x of tools) for (const e of x.emits) assert.ok(manifest.events.includes(e), `wos-app.json lists event ${e}`);
+  for (const x of tools) for (const e of x.emits) assert.ok(manifest.events.emits.includes(e), `wos-app.json lists event ${e}`);
 });
 
 test('an agent can do everything over MCP alone: every tool, end to end', async () => {
@@ -64,15 +64,17 @@ test('an agent can do everything over MCP alone: every tool, end to end', async 
   await call('chat.list_channels', { browse: true });
   await call('chat.get_channel', { channel: 'general' });
   const ch = idOf(await call('chat.create_channel', { name: 'agent-room', topic: 'Made by an agent' }), 'c');
-  await call('chat.invite', { channel: ch, people: ['jordan', 'helper'] });
+  await call('chat.invite_people', { channel: ch, people: ['jordan', 'helper'] });
   await call('chat.set_topic', { channel: ch, topic: 'Still made by an agent' });
   const file = JSON.parse(await call('chat.upload_file', { name: 'a.txt', content_base64: Buffer.from('x').toString('base64') }));
-  const m = idOf(await call('chat.post', { channel: ch, body: 'Hello @jordan', files: [file.id] }), 'm');
-  const r = idOf(await call('chat.reply', { message: m, body: 'In the thread' }), 'm');
-  await call('chat.react', { message: m, emoji: '✅' });
-  await call('chat.edit', { message: r, body: 'In the thread (edited)' });
-  assert.match(await call('chat.read', { thread: m }), /edited/);
-  await call('chat.search', { q: 'thread' });
+  const m = idOf(await call('chat.post_message', { channel: ch, body: 'Hello @jordan', files: [file.id] }), 'm');
+  const r = idOf(await call('chat.post_reply', { message: m, body: 'In the thread' }), 'm');
+  await call('chat.add_reaction', { message: m, emoji: '✅' });
+  await call('chat.remove_reaction', { message: m, emoji: '✅' });
+  await call('chat.add_reaction', { message: m, emoji: '✅' });
+  await call('chat.edit_message', { message: r, body: 'In the thread (edited)' });
+  assert.match(await call('chat.read_messages', { thread: m }), /edited/);
+  await call('chat.search_messages', { q: 'thread' });
   await call('chat.list_mentions');
   await call('chat.set_typing', { channel: ch });
   await call('chat.mark_unread', { message: m });
@@ -83,10 +85,10 @@ test('an agent can do everything over MCP alone: every tool, end to end', async 
   await call('chat.set_status', { text: 'Working', emoji: '🛠️' });
   await call('chat.get_settings');
   const dm = idOf(await call('chat.open_dm', { people: ['casey'] }), 'd');
-  await call('chat.post', { channel: dm, body: 'hi Casey' });
-  await call('chat.delete', { message: r });
-  await call('chat.leave', { channel: 'random' });
-  await call('chat.join', { channel: 'random' });
+  await call('chat.post_message', { channel: dm, body: 'hi Casey' });
+  await call('chat.delete_message', { message: r });
+  await call('chat.leave_channel', { channel: 'random' });
+  await call('chat.join_channel', { channel: 'random' });
   await call('chat.archive_channel', { channel: ch });
   await call('chat.archive_channel', { channel: ch, archived: false });
   await call('chat.add_person', { name: 'Morgan Pike', email: 'morgan@birch-law.example' });
@@ -103,7 +105,7 @@ test('an agent can do everything over MCP alone: every tool, end to end', async 
   await call('chat.unsubscribe_push', {});
   const ev = JSON.parse(await call('chat.list_events', {}));
   await call('chat.list_events', { since: Math.max(0, ev.cursor - 5) });
-  assert.match(await call('chat.export'), /Export ready: \/files\//);
+  assert.match(await call('chat.export_data'), /Export ready: \/files\//);
   const zip = zipSync({ 'users.json': strToU8('[]'), 'channels.json': strToU8('[{"id":"C1","name":"x","members":[]}]') });
   const z = JSON.parse(await call('chat.upload_file', { name: 'slack.zip', content_base64: Buffer.from(zip).toString('base64') }));
   assert.match(await call('chat.import_slack', { file: z.id }), /needs a person's yes/);

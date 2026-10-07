@@ -72,19 +72,19 @@ Without Docker you need Node 20 or newer: run `npm ci && npm start` for SQLite i
 
 Every action is a tool, served two ways from the same handlers:
 
-- **MCP** at `/mcp` (Streamable HTTP, with OAuth sign-in: discovery, dynamic client registration, PKCE). Add `https://your-host/mcp` as a connector in Claude, ChatGPT, Claude Code or Codex. Clients that reject dots in tool names can use `/mcp?names=underscore` (`chat_post` instead of `chat.post`).
+- **MCP** at `/mcp` (Streamable HTTP, with OAuth sign-in: discovery, dynamic client registration, PKCE). Add `https://your-host/mcp` as a connector in Claude, ChatGPT, Claude Code or Codex. Clients that reject dots in tool names can use `/mcp?names=underscore` (`chat_post` instead of `chat.post_message`).
 - **REST** at `POST /api/tools/<name>` with a JSON body. The screens use exactly this.
 
 The full catalogue, with input and output schemas, is [`tools.json`](tools.json) (regenerate with `npm run tools:json`). Each tool has a scope (read, write, delete, admin) and a confirm value. A connection can be limited to some scopes (`scope=read write` when it signs in). Tools marked `confirm: human` (removing someone, importing) ask the person first when an app calls them: the request waits in Activity until the person says yes.
 
 | Tool | Scope | |
 |---|---|---|
-| `chat.list_channels`, `chat.get_channel`, `chat.read`, `chat.search`, `chat.list_mentions`, `chat.list_people`, `chat.list_events`, `chat.get_settings`, `chat.list_approvals` | read | Reading |
-| `chat.post`, `chat.reply`, `chat.edit`, `chat.react`, `chat.upload_file`, `chat.set_typing` | write | Messages |
-| `chat.delete` | delete | Messages |
-| `chat.create_channel`, `chat.open_dm`, `chat.invite`, `chat.join`, `chat.leave`, `chat.set_topic`, `chat.set_status` | write | Channels and people |
+| `chat.list_channels`, `chat.get_channel`, `chat.read_messages`, `chat.search_messages`, `chat.list_mentions`, `chat.list_people`, `chat.list_events`, `chat.get_settings`, `chat.list_approvals` | read | Reading |
+| `chat.post_message`, `chat.post_reply`, `chat.edit_message`, `chat.react`, `chat.upload_file`, `chat.set_typing` | write | Messages |
+| `chat.delete_message` | delete | Messages |
+| `chat.create_channel`, `chat.open_dm`, `chat.invite_people`, `chat.join_channel`, `chat.leave_channel`, `chat.set_topic`, `chat.set_status` | write | Channels and people |
 | `chat.mark_read`, `chat.mark_unread`, `chat.set_notify`, `chat.set_preferences`, `chat.subscribe_push`, `chat.unsubscribe_push`, `chat.decide_approval` | write | Reading state, notifications, approvals |
-| `chat.archive_channel`, `chat.add_person`, `chat.add_agent`, `chat.export` | admin | Team |
+| `chat.archive_channel`, `chat.add_person`, `chat.add_agent`, `chat.export_data` | admin | Team |
 | `chat.remove_person`, `chat.import_slack` | admin, confirm: human | Team |
 
 `wos-app.json` is the app manifest (ROADMAP 2.5): tools, tables (`migrations/`), server, screens, needs and data.
