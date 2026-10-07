@@ -13,7 +13,8 @@ button{font:inherit;color:inherit}
 /* ---- shell: kit sidebar on a desk; on a phone the kit's top bar and dock ---- */
 .chat-root.ui-shell{height:100svh}
 /* Inside the suite: the app sits in the suite's page instead of owning the window */
-.chat-root.is-embedded{display:flex;height:100%;min-height:0}
+.chat-root.is-embedded{display:flex;height:100svh;min-height:0}
+@media(max-width:900px){.chat-root.is-embedded{height:calc(100svh - 57px - 64px)}}
 .chat-root.is-embedded .ui-side{position:relative;inset:auto;flex:none;height:100%}
 .chat-root.is-embedded .ui-main{margin-left:0;flex:1;height:100%}
 .chat-root .ui-side{gap:0;padding-bottom:var(--ui-s2);overflow:hidden}
