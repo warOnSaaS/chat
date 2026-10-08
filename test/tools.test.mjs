@@ -54,7 +54,8 @@ test('every tool is fully described, and tools.json is current', () => {
 test('an agent can do everything over MCP alone: every tool, end to end', async () => {
   const c = new Client({ name: 'agent', version: '1' });
   await c.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`), { requestInit: { headers: { authorization: `Bearer ${issueTokens(t.sam, { app: 'Test agent' }).access_token}` } } }));
-  const listed = (await c.listTools()).tools.map((x) => x.name);
+  // Listed by wire name (chat_post_message); the calls below use the catalogue names.
+  const listed = (await c.listTools()).tools.map((x) => x.name.replace('_', '.'));
   const used = new Set();
   const call = async (name, args = {}) => {
     used.add(name);

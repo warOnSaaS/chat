@@ -70,24 +70,25 @@ test('REST tools: the same handlers as MCP, with a browser origin check', async 
   assert.match(pend.pending.approval_id, /^ap_/);
 });
 
-test('MCP: every tool is listed, with dotted names or underscores for strict clients', async () => {
+test('MCP: every tool is listed by its wire name (chat_post_message); calls by wire or dotted name both work', async () => {
   const c = await mcp(t.sam);
   const names = (await c.listTools()).tools.map((x) => x.name);
   const catalogue = (await fetch(`${base}/tools.json`).then((r) => r.json())).tools.map((x) => x.name);
-  assert.deepEqual(names.sort(), catalogue.sort());
-  const out = await c.callTool({ name: 'chat.post_message', arguments: { channel: 'general', body: 'from claude' } });
+  assert.deepEqual(names.sort(), catalogue.map((n) => n.replace('.', '_')).sort());
+  for (const n of names) assert.match(n, /^[a-z]+_[a-z_]+$/, `${n} is not a wire name`);
+  const out = await c.callTool({ name: 'chat_post_message', arguments: { channel: 'general', body: 'from claude' } });
   assert.equal(out.structuredContent.body, 'from claude');
   assert.equal(JSON.parse(out.content[0].text).id, out.structuredContent.id);
   const read = await c.callTool({ name: 'chat.read_messages', arguments: { channel: 'general' } });
   assert.ok(read.structuredContent.messages.some((m) => m.body === 'from claude'));
   await c.close();
-  const u = await mcp(t.sam, { query: '?names=underscore' });
-  assert.ok((await u.listTools()).tools.some((x) => x.name === 'chat_post_message'));
-  await u.close();
+  // REST takes either form too.
+  const rest = await tool('chat_list_people', {}, cookie(t.sam));
+  assert.equal(rest.result.me.handle, 'sam');
   // A read-only connection only sees read tools.
   const ro = await mcp(t.jordan, { scopes: ['read'] });
   const roNames = (await ro.listTools()).tools.map((x) => x.name);
-  assert.ok(roNames.includes('chat.read_messages') && !roNames.includes('chat.post_message'));
+  assert.ok(roNames.includes('chat_read_messages') && !roNames.includes('chat_post_message'));
   await ro.close();
   const r = await fetch(`${base}/mcp`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
   assert.equal(r.status, 401);

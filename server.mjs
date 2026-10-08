@@ -10,7 +10,7 @@ import { WebSocketServer } from 'ws';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { createApp } from './lib/app.mjs';
-import { listTools, runTool, toText } from './lib/tools.mjs';
+import { listTools, runTool, toText, toWire, fromWire } from './lib/tools.mjs';
 import { canSee } from './lib/bus.mjs';
 import { seedDemo } from './lib/demo.mjs';
 import { createMailer } from './lib/mail.mjs';
@@ -173,11 +173,11 @@ async function handleTool(app, req, res, name) {
   const who = await identify(app, req);
   if (!who) return json(res, 401, { error: signInError(app) }, { 'www-authenticate': challenge(hostOf(req)) });
   // A signed-out visitor on the hosted copy may read the example team; anything else needs an account.
-  if (who.via === 'viewer' && listTools().find((t) => t.name === name)?.scope !== 'read') return json(res, 401, { error: signInError(app) });
+  if (who.via === 'viewer' && listTools().find((t) => t.name === fromWire(name))?.scope !== 'read') return json(res, 401, { error: signInError(app) });
   // A browser call must come from this site (the cookie is SameSite=Lax; this closes the rest).
   if (who.via !== 'mcp' && req.headers.origin && req.headers.origin !== hostOf(req)) return json(res, 403, { error: { code: 'forbidden', message: 'Wrong origin.' } });
   const input = await bodyObject(req);
-  const result = await runTool(app, who.me, name, input, { via: who.via === 'mcp' ? 'rest' : 'web', scopes: who.scopes, client: who.client });
+  const result = await runTool(app, who.me, fromWire(name), input, { via: who.via === 'mcp' ? 'rest' : 'web', scopes: who.scopes, client: who.client });
   // A confirm: human tool called by an app: 202 and the approval id, as the suite does.
   if (result?.pending) return json(res, 202, result);
   json(res, 200, { result });
@@ -187,13 +187,12 @@ async function handleMcp(app, req, res, host, url) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Use POST (this is an MCP endpoint)' }, { allow: 'POST' });
   const who = await identify(app, { headers: { authorization: req.headers.authorization } });
   if (!who) return json(res, 401, { error: signInError(app) }, { 'www-authenticate': challenge(host) });
-  // Tool names have a dot (chat.post_message), as the suite catalogue does. Clients that only allow letters, digits,
-  // _ and - can connect to /mcp?names=underscore and get chat_post instead.
-  const underscore = url.searchParams.get('names') === 'underscore';
+  // Tools are listed by wire name (chat_post_message): Anthropic and OpenAI reject dots. A call by the dotted
+  // catalogue name (chat.post_message) is accepted too. (/mcp?names=underscore, the old way to get these, still works.)
   const server = new McpServer({ name: 'wos-chat', version: VERSION }, { instructions: INSTRUCTIONS });
   for (const t of listTools()) {
     if (!who.scopes.includes(t.scope)) continue;
-    server.registerTool(underscore ? t.name.replace('.', '_') : t.name, {
+    server.registerTool(toWire(t.name), {
       title: t.title, description: t.description + (t.confirm === 'human' ? ' Needs a person\'s yes: it asks them in the app first.' : ''), inputSchema: t.input,
       annotations: { readOnlyHint: t.scope === 'read', destructiveHint: t.scope === 'delete' || t.confirm === 'human', openWorldHint: false },
     }, async (args) => {
@@ -209,12 +208,14 @@ async function handleMcp(app, req, res, host, url) {
   const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   res.on('close', () => { transport.close(); server.close(); });
   await server.connect(transport);
-  await transport.handleRequest(req, res, await bodyObject(req));
+  const body = await bodyObject(req);
+  for (const m of Array.isArray(body) ? body : [body]) if (m?.method === 'tools/call' && typeof m.params?.name === 'string') m.params.name = toWire(m.params.name);
+  await transport.handleRequest(req, res, body);
 }
 
 const INSTRUCTIONS = `This is wOS Chat, a team's chat: channels, direct messages and threads.
-Be brief. Use chat.list_channels to see where things are, chat.read_messages to read a channel or a thread, chat.search_messages to find something.
-Post with chat.post_message; answer inside a thread with chat.post_reply. Mention people with @handle (chat.list_people has the handles).
+Be brief. Use chat_list_channels to see where things are, chat_read_messages to read a channel or a thread, chat_search_messages to find something.
+Post with chat_post_message; answer inside a thread with chat_post_reply. Mention people with @handle (chat_list_people has the handles).
 Never post on someone's behalf without being asked. Never invent messages.`;
 
 async function handleUpload(app, req, res, url) {
