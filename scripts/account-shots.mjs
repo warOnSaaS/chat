@@ -96,6 +96,8 @@ if (live) {
   await page.evaluate((h) => { location.hash = h; }, `#/c/${ids.general}`);
   await page.waitForTimeout(500);
   await shot(page, 'signed-in-phone');
+  // An AI app the way Claude Code connects: dynamic registration, PKCE, a loopback redirect, through the account.
+  await mcpCheck(page, base).catch((e) => problems.push(`live mcp: ${e.message}`));
   // Clean up: delete the test account (which ends its sessions).
   const del = await page.evaluate(async () => {
     const r = await fetch('https://account.waronsaas.com/api/tools/account.delete', { method: 'POST', credentials: 'include', headers: { 'content-type': 'application/json', 'x-wos-call': '1' }, body: JSON.stringify({ confirm: 'delete' }) });
@@ -111,6 +113,39 @@ if (live) {
     if (del2 !== 200) problems.push(`live: could not delete the test account (${del2})`);
   } else console.log('test account deleted:', del);
   await ctx.close();
+}
+
+async function mcpCheck(page, base) {
+  const http = await import('node:http');
+  const crypto = await import('node:crypto');
+  const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+  const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+  let gotCode;
+  const code = new Promise((r) => { gotCode = r; });
+  const loop = http.createServer((req, res) => { const u = new URL(req.url, 'http://x'); res.end('You can close this tab.'); if (u.pathname === '/cb') gotCode(Object.fromEntries(u.searchParams)); });
+  await new Promise((r) => loop.listen(0, '127.0.0.1', r));
+  const redirect = `http://127.0.0.1:${loop.address().port}/cb`;
+  const meta = await fetch(`${base}/.well-known/oauth-authorization-server`).then((r) => r.json());
+  const reg = await fetch(meta.registration_endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ client_name: 'Claude Code (check)', redirect_uris: [redirect] }) }).then((r) => r.json());
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const q = new URLSearchParams({ client_id: reg.client_id, redirect_uri: redirect, response_type: 'code', code_challenge: crypto.createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256', state: 'live1', scope: 'read write' });
+  await page.goto(`${meta.authorization_endpoint}?${q}`);
+  const got = await Promise.race([code, new Promise((_, j) => setTimeout(() => j(new Error('no code came back to the loopback in 60s')), 60000))]);
+  loop.close();
+  if (got.state !== 'live1' || !got.code) throw new Error(`bad callback: ${JSON.stringify(got)}`);
+  const tok = await fetch(meta.token_endpoint, { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ grant_type: 'authorization_code', code: got.code, client_id: reg.client_id, redirect_uri: redirect, code_verifier: verifier }) }).then((r) => r.json());
+  if (!tok.access_token) throw new Error(`token exchange failed: ${JSON.stringify(tok)}`);
+  const c = new Client({ name: 'check', version: '1' });
+  await c.connect(new StreamableHTTPClientTransport(new URL(`${base}/mcp`), { requestInit: { headers: { authorization: `Bearer ${tok.access_token}` } } }));
+  const names = (await c.listTools()).tools.map((t) => t.name);
+  const bad = names.filter((n) => !/^[a-z]+_[a-z_]+$/.test(n));
+  if (bad.length) throw new Error(`tools/list has non-wire names: ${bad.join(', ')}`);
+  const r = await c.callTool({ name: 'chat_list_channels', arguments: {} });
+  if (r.isError) throw new Error(`tools/call chat_list_channels failed: ${r.content?.[0]?.text}`);
+  const posted = await c.callTool({ name: 'chat_post_message', arguments: { channel: 'general', body: 'Posted over MCP by the live check.' } });
+  if (posted.isError) throw new Error(`tools/call chat_post_message failed: ${posted.content?.[0]?.text}`);
+  await c.close();
+  console.log(`mcp: ${names.length} tools listed by wire name; tools/call by wire name works`);
 }
 
 await browser.close();
