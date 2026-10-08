@@ -27,7 +27,8 @@
     "shots": "node scripts/shots.mjs",
     "check:clean": "node scripts/check-clean.mjs",
     "check": "node scripts/tools-json.mjs --check && node scripts/build-screens.mjs --check && node --test --test-timeout=120000 --test-concurrency=1 test/*.test.mjs && node scripts/check-clean.mjs",
-    "build:screens": "node scripts/build-screens.mjs"
+    "build:screens": "node scripts/build-screens.mjs",
+    "sync-account": "node scripts/sync-account.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",
