@@ -21,6 +21,7 @@ import { register } from './lib/suite.mjs';
 import {
   identify, sign, verify, cookieOf, setCookie, DEMO_COOKIE, challenge, json, page, bodyObject, loginPage, githubRedirect,
   handleGithubCallback, handleEmailStart, handleEmailVerify, handleAuthorize, handleToken, handleRegister, resourceMetadata, serverMetadata, COOKIE,
+  handleAccountStart, handleAccountCallback, signInError,
 } from './lib/auth.mjs';
 
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
@@ -119,12 +120,22 @@ async function route(app, req, res) {
   if (p === '/oauth/register') return handleRegister(req, res);
   if (p === '/oauth/token') return handleToken(app, req, res);
   if (p === '/oauth/authorize') return handleAuthorize(app, req, res, host);
-  if (p === '/oauth/github/callback') return handleGithubCallback(app, req, res, host);
-  if (p === '/login') return app.demo ? redirect(res, '/') : loginPage(app, res, url.searchParams.get('next') ?? '/');
-  if (p === '/login/github') return process.env.GITHUB_OAUTH_CLIENT_ID ? githubRedirect(res, host, url.searchParams.get('next')) : loginPage(app, res, '/', 'GitHub sign-in is not set up on this server (GITHUB_OAUTH_CLIENT_ID). Use the email link.');
-  if (p === '/auth/email' && req.method === 'POST') return handleEmailStart(app, req, res, host, app.mailer);
-  if (p === '/auth/email/verify') return handleEmailVerify(app, req, res, host);
-  if (p === '/logout') return res.writeHead(302, { location: app.demo ? '/' : '/login', 'set-cookie': [setCookie(host, COOKIE, '', 0), setCookie(host, DEMO_COOKIE, '', 0)], 'cache-control': 'no-store' }).end();
+  const clearCookies = [setCookie(host, COOKIE, '', 0), setCookie(host, DEMO_COOKIE, '', 0)];
+  if (app.auth === 'waronsaas') {
+    // The hosted copy: sign-in happens at the account. The app's own GitHub and email-link routes are off.
+    if (p === '/auth/waronsaas') return handleAccountStart(app, req, res, host);
+    if (p === '/auth/waronsaas/callback') return handleAccountCallback(app, req, res, host);
+    if (p === '/login' || p === '/login/github') return redirect(res, `/auth/waronsaas?next=${encodeURIComponent(url.searchParams.get('next') ?? '/')}`);
+    if (p === '/logout') return res.writeHead(302, { location: app.account.endSessionUrl(`${host}/`), 'set-cookie': clearCookies, 'cache-control': 'no-store' }).end();
+    if (p.startsWith('/auth/email') || p === '/oauth/github/callback') return json(res, 404, { error: 'Not found' });
+  } else {
+    if (p === '/oauth/github/callback') return handleGithubCallback(app, req, res, host);
+    if (p === '/login') return app.demo ? redirect(res, '/') : loginPage(app, res, url.searchParams.get('next') ?? '/');
+    if (p === '/login/github') return process.env.GITHUB_OAUTH_CLIENT_ID ? githubRedirect(res, host, url.searchParams.get('next')) : loginPage(app, res, '/', 'GitHub sign-in is not set up on this server (GITHUB_OAUTH_CLIENT_ID). Use the email link.');
+    if (p === '/auth/email' && req.method === 'POST') return handleEmailStart(app, req, res, host, app.mailer);
+    if (p === '/auth/email/verify') return handleEmailVerify(app, req, res, host);
+    if (p === '/logout') return res.writeHead(302, { location: app.demo ? '/' : '/login', 'set-cookie': clearCookies, 'cache-control': 'no-store' }).end();
+  }
   if (p === '/api/tools' && req.method === 'GET') return json(res, 200, { tools: catalogue() });
   if (p.startsWith('/api/tools/')) return handleTool(app, req, res, decodeURIComponent(p.slice('/api/tools/'.length)));
   // File streams live under /files/chat/, as the suite routes them.
@@ -135,15 +146,20 @@ async function route(app, req, res) {
   // Every other path is the app; the screen reads its place from the #hash.
   let who = await identify(app, req);
   const headers = { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' };
-  if (!who && app.demo) {
+  if (!who && (app.demo || app.auth === 'waronsaas')) {
+    // The demo, or on the hosted copy the example team a signed-out visitor looks at (read only; posting asks them to sign in).
     const seeded = await seedDemo(app);
-    who = { me: await app.chat.personRow(seeded.people.sam) };
+    who = { me: await app.chat.personRow(seeded.people.sam), via: app.demo ? 'web' : 'viewer' };
     headers['set-cookie'] = setCookie(host, DEMO_COOKIE, sign({ k: 'demo', t: seeded.teamId, id: seeded.people.sam }), 2 * DAY);
   }
   if (!who) return loginPage(app, res, p + url.search);
   const prefs = await app.chat.prefs(who.me);
   const team = await app.chat.team(who.me.team_id);
-  res.writeHead(200, headers).end(appShell({ title: team?.name ? `${team.name} · Chat` : 'Chat', theme: prefs.theme, demo: app.demo, version: VERSION }));
+  const viewer = who.via === 'viewer';
+  res.writeHead(200, headers).end(appShell({
+    title: team?.name ? `${team.name} · Chat` : 'Chat', theme: viewer ? 'auto' : prefs.theme, demo: app.demo, version: VERSION,
+    account: app.account ? { url: app.account.issuer, signedIn: !viewer } : null,
+  }));
 }
 
 const redirect = (res, to) => res.writeHead(302, { location: to, 'cache-control': 'no-store' }).end();
@@ -155,9 +171,11 @@ export function catalogue() {
 async function handleTool(app, req, res, name) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Use POST' }, { allow: 'POST' });
   const who = await identify(app, req);
-  if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } }, { 'www-authenticate': challenge(hostOf(req)) });
+  if (!who) return json(res, 401, { error: signInError(app) }, { 'www-authenticate': challenge(hostOf(req)) });
+  // A signed-out visitor on the hosted copy may read the example team; anything else needs an account.
+  if (who.via === 'viewer' && listTools().find((t) => t.name === name)?.scope !== 'read') return json(res, 401, { error: signInError(app) });
   // A browser call must come from this site (the cookie is SameSite=Lax; this closes the rest).
-  if (who.via === 'web' && req.headers.origin && req.headers.origin !== hostOf(req)) return json(res, 403, { error: { code: 'forbidden', message: 'Wrong origin.' } });
+  if (who.via !== 'mcp' && req.headers.origin && req.headers.origin !== hostOf(req)) return json(res, 403, { error: { code: 'forbidden', message: 'Wrong origin.' } });
   const input = await bodyObject(req);
   const result = await runTool(app, who.me, name, input, { via: who.via === 'mcp' ? 'rest' : 'web', scopes: who.scopes, client: who.client });
   // A confirm: human tool called by an app: 202 and the approval id, as the suite does.
@@ -168,7 +186,7 @@ async function handleTool(app, req, res, name) {
 async function handleMcp(app, req, res, host, url) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Use POST (this is an MCP endpoint)' }, { allow: 'POST' });
   const who = await identify(app, { headers: { authorization: req.headers.authorization } });
-  if (!who) return json(res, 401, { error: 'Sign in to use this chat.' }, { 'www-authenticate': challenge(host) });
+  if (!who) return json(res, 401, { error: signInError(app) }, { 'www-authenticate': challenge(host) });
   // Tool names have a dot (chat.post_message), as the suite catalogue does. Clients that only allow letters, digits,
   // _ and - can connect to /mcp?names=underscore and get chat_post instead.
   const underscore = url.searchParams.get('names') === 'underscore';
@@ -201,14 +219,14 @@ Never post on someone's behalf without being asked. Never invent messages.`;
 
 async function handleUpload(app, req, res, url) {
   const who = await identify(app, req);
-  if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } });
+  if (!who || who.via === 'viewer') return json(res, 401, { error: signInError(app) });
   if (!who.scopes.includes('write')) return json(res, 403, { error: { code: 'scope', message: 'This connection may not write.' } });
   return uploadStream(app, who.me, req, res, url);
 }
 
 async function handleDownload(app, req, res, p) {
   const who = await identify(app, req);
-  if (!who) return json(res, 401, { error: { code: 'sign_in', message: 'Sign in first.' } });
+  if (!who) return json(res, 401, { error: signInError(app) });
   return downloadStream(app, who.me, res, p);
 }
 

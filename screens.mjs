@@ -128,7 +128,7 @@ function renderShell() {
   </aside>
   <div class="ui-main">
     <header class="ui-topbar" id="topbar"></header>
-    ${S.settings.team.demo ? demoBar() : ''}
+    ${CTX.viewer ? viewerBar() : S.settings.team.demo ? demoBar() : ''}
     <div class="view" id="view"><div class="loading">Loading</div></div>
     <nav class="ui-dock" aria-label="Main">
       <a data-tool="none" data-why="moves to another screen" href="#/home" data-nav="home">${ic('home', 20)}<span>Home</span></a>
@@ -140,6 +140,12 @@ function renderShell() {
   <div class="ui-toast" id="toast" role="status" aria-live="polite"></div>`;
   ROOT.removeAttribute('aria-busy');
   renderSide();
+}
+
+// The hosted copy, signed out: looking is free, the first press asks for an account.
+function viewerBar() {
+  return `<div class="demo-bar"><span class="ui-chip is-outline">Example</span><span>Acme Dental is example data. Look around freely. <span class="desk-only">To post, start your own team chat or join one: </span></span>
+    <a class="ui-btn is-accent is-sm" data-tool="none" data-why="starts sign-in" href="/auth/waronsaas?next=%2F">Sign in</a></div>`;
 }
 
 function demoBar() {
@@ -405,7 +411,7 @@ function maybeMarkRead() {
   readTimer = setTimeout(async () => {
     const id = S.current;
     const c = S.channels.find((x) => x.id === id);
-    if (!id || !c || document.hidden || S.holdRead.has(id)) return;
+    if (!id || !c || document.hidden || S.holdRead.has(id) || CTX.viewer) return;
     const cv = S.convos.get(id);
     if (!cv?.at_latest) return;
     const lastOther = [...cv.messages].reverse().find((m) => !m.mine)?.id;
@@ -484,7 +490,7 @@ async function showSettings() {
   const seg = (tool, field, value, options) => `<div class="ui-seg" role="group">${options.map(([v, l]) => `<button type="button" data-tool="${tool}" data-${field}="${v}" aria-pressed="${v === value}">${l}</button>`).join('')}</div>`;
   const pushSupported = 'serviceWorker' in navigator && 'PushManager' in window;
   const host = location.origin;
-  $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>Settings</h1><p>${esc(me.name)} · @${esc(me.handle)}</p></div>${s.team.demo ? '' : '<a class="ui-btn is-quiet" href="/logout">Sign out</a>'}</div>
+  $('#view').innerHTML = `<div class="panel-page"><div class="ui-page"><div class="ui-ph"><div><h1>Settings</h1><p>${esc(me.name)} · @${esc(me.handle)}</p></div>${CTX.viewer ? '<a class="ui-btn is-accent" data-tool="none" data-why="starts sign-in" href="/auth/waronsaas?next=%2F%23%2Fsettings">Sign in</a>' : s.team.demo ? '' : '<a class="ui-btn is-quiet" href="/logout">Sign out</a>'}</div>
     <section class="sect"><h2>Status</h2><p>What people see next to your name.</p>
       <form class="inline-form" data-tool="chat.set_status"><label class="ui-field" style="max-width:110px;min-width:80px"><span>Emoji</span><input class="ui-input" name="emoji" value="${esc(me.status?.emoji ?? '')}" maxlength="16" placeholder="📅"></label><label class="ui-field"><span>Status</span><input class="ui-input" name="text" value="${esc(me.status?.text ?? '')}" maxlength="100" placeholder="In meetings till 3"></label><button data-tool="chat.set_status" class="ui-btn is-accent" type="submit">Save</button></form></section>
     <section class="sect"><h2>Notifications</h2><p>Your usual rule for every channel. Each channel can have its own from its bell. Direct messages and replies to your threads always count.</p>
@@ -970,7 +976,7 @@ let typingSent = 0;
 function onComposerInput(ta) {
   autosize(ta);
   const form = ta.closest('form');
-  if (Date.now() - typingSent > 3000 && ta.value.trim()) {
+  if (!CTX.viewer && Date.now() - typingSent > 3000 && ta.value.trim()) {
     typingSent = Date.now();
     call('chat.set_typing', { channel: form.dataset.channel, ...(form.dataset.message ? { thread: form.dataset.message } : {}) }).catch(() => {});
   }

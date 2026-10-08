@@ -6,14 +6,22 @@ import { mount } from './chat.mjs';
 const listeners = new Set();
 const emit = (e) => { for (const fn of listeners) { try { fn(e); } catch (err) { console.error(err); } } };
 
+// On the hosted copy (window.CHAT.account) a signed-out visitor looks at the example team; viewer says so, and a
+// 401 opens the account's sign-in prompt instead of leaving the page.
+const CHAT = window.CHAT ?? {};
 const ctx = {
   standalone: true,
+  viewer: !!CHAT.viewer,
   path: location.hash.replace(/^#/, '') || '/',
   async callTool(name, input = {}) {
     const r = await fetch(`/api/tools/${name}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input), credentials: 'same-origin' });
     let j = {};
     try { j = await r.json(); } catch {}
-    if (r.status === 401) { location.href = `/login?next=${encodeURIComponent(location.pathname + location.hash)}`; throw new Error('Signed out'); }
+    if (r.status === 401) {
+      if (CHAT.account) { window.wosAccount?.prompt(name === 'chat.post_message' || name === 'chat.post_reply' ? 'post a message' : 'use Chat'); throw new Error(j.error?.message || 'Sign in to do that.'); }
+      location.href = `/login?next=${encodeURIComponent(location.pathname + location.hash)}`;
+      throw new Error('Signed out');
+    }
     if (r.status === 202 && j.pending) return j;
     if (!r.ok || j.error) throw new Error(j.error?.message || 'Something went wrong. Try again.');
     return j.result;
