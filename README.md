@@ -43,6 +43,7 @@ Without Docker you need Node 20 or newer: run `npm ci && npm start` for SQLite i
 | `OAUTH_SECRET` | A long random string that signs sign-in cookies and tokens. **Set it.** |
 | `CHAT_TEAM_NAME` | The name shown at the top (default "Team chat") |
 | `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET` | Turn on "Sign in with GitHub". Make a GitHub OAuth app with the callback `https://your-host/oauth/github/callback` |
+| `AUTH_PROVIDER` | How people sign in: `github` (GitHub plus an email link, the default), `local` (the email link alone) or `waronsaas` (a warOnSaaS account: GitHub, Google and email happen at the account; anyone may sign up and gets a workspace of their own or joins their account's team; signed-out visitors see the example team read-only). `waronsaas` needs `WOS_ACCOUNT_CLIENT_ID` and `WOS_ACCOUNT_CLIENT_SECRET`, and `WOS_ACCOUNT_URL` if you run the account yourself. This is how chat.waronsaas.com runs; a self-hosted copy needs none of it |
 | `SMTP_URL`, `MAIL_FROM` | Send sign-in links, for example `smtp://user:pass@smtp.example.com:587` |
 | `FILES_DIR` | Where files go on disk (default `./data/files`) |
 | `FILES_STORAGE=db` | Keep files in the database instead |
