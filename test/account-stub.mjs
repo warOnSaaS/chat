@@ -3,6 +3,8 @@
 // false makes a silent try (prompt=none) answer login_required; stub.end(sid) ends a session.
 import http from 'node:http';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const b64u = (b) => Buffer.from(b).toString('base64url');
 
@@ -33,6 +35,12 @@ export async function startAccountStub({ clientId = 'chat-test', clientSecret = 
     const u = new URL(req.url, 'http://x');
     const out = (status, obj) => res.writeHead(status, { 'content-type': 'application/json' }).end(JSON.stringify(obj));
     if (u.pathname === '/jwks.json') return out(200, { keys: [jwk] });
+    if (u.pathname === '/prompt.js') {
+      // The real prompt script, when the account repo is next to this one, so local screenshots show the prompt.
+      const file = [path.resolve('..', 'wos-account', 'public', 'prompt.js'), path.join(process.env.HOME ?? '', 'wos-account', 'public', 'prompt.js')].find((f) => fs.existsSync(f));
+      if (!file) return res.writeHead(404).end();
+      return res.writeHead(200, { 'content-type': 'text/javascript' }).end(fs.readFileSync(file));
+    }
     if (u.pathname === '/oauth/authorize') {
       const q = Object.fromEntries(u.searchParams);
       stub.authorizations.push(q);

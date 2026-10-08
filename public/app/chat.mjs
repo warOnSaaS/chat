@@ -142,7 +142,7 @@ function renderShell() {
 
 // The hosted copy, signed out: looking is free, the first press asks for an account.
 function viewerBar() {
-  return `<div class="demo-bar"><span class="ui-chip is-outline">Example</span><span>Acme Dental is example data. Look around freely. <span class="desk-only">To post, start your own team chat or join one: </span></span>
+  return `<div class="demo-bar is-viewer"><span class="ui-chip is-outline">Example</span><span>Acme Dental is example data. Look around freely; sign in to post<span class="desk-only"> in a team chat of your own</span>.</span>
     <a class="ui-btn is-accent is-sm" data-tool="none" data-why="starts sign-in" href="/auth/waronsaas?next=%2F">Sign in</a></div>`;
 }
 

@@ -193,7 +193,7 @@ button{font:inherit;color:inherit}
 
 /* demo banner and sign-in page */
 .demo-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px clamp(14px,2vw,24px);border-bottom:1px solid var(--ui-line);font-size:12.5px;color:var(--ui-ink-2);background:var(--ui-surface-2)}
-.demo-bar a{color:var(--ui-ink)}
+.demo-bar a{color:var(--ui-ink)}.demo-bar .ui-btn.is-accent{color:var(--ui-on-accent);margin-left:auto}@media(max-width:900px){.demo-bar.is-viewer{flex-wrap:nowrap}.demo-bar.is-viewer .ui-chip{display:none}.demo-bar.is-viewer>span{flex:1;min-width:0}}
 .demo-bar .who a[aria-current=true]{font-weight:600;text-decoration:none}
 body.gate{display:grid;place-items:center;min-height:100svh;padding:20px}
 .gate-card{width:min(400px,100%);padding:32px;border:1px solid var(--ui-line);border-radius:var(--ui-radius-lg);background:var(--ui-surface);box-shadow:var(--ui-shadow-md)}
